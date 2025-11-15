@@ -1,0 +1,32 @@
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+
+// Pages
+import ProjectForm from "./components/ProjectForm";
+import ServicesPage from "./components/ServicesPage";
+import MowingForm from "./components/MowingForm";
+import MulchingForm from "./components/MulchingForm";
+import PruningForm from "./components/PruningForm";
+import LeavesForm from "./components/LeavesForm";
+
+// Context
+import { ServiceProvider } from "./context/ServiceContext";
+
+function App() {
+  return (
+    <ServiceProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<ProjectForm />} />
+          <Route path="/services" element={<ServicesPage />} />
+          <Route path="/services/mowing" element={<MowingForm />} />
+          <Route path="/services/mulching" element={<MulchingForm />} />
+          <Route path="/services/pruning" element={<PruningForm />} />
+          <Route path="/services/leaves" element={<LeavesForm />} />
+        </Routes>
+      </Router>
+    </ServiceProvider>
+  );
+}
+
+export default App;
