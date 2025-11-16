@@ -1,28 +1,33 @@
 // server/server.js
 const express = require("express");
 const cors = require("cors");
-const sqlite3 = require("sqlite3").verbose();
+const Database = require("better-sqlite3");
 
 const app = express();
 app.set("trust proxy", true);
 
 // Enable CORS for local development
-app.use(cors({
-  origin: "*", // allow any origin for now
-  methods: ["GET", "POST", "DELETE", "PUT"],
-  allowedHeaders: ["Content-Type"]
-}));
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "DELETE", "PUT"],
+    allowedHeaders: ["Content-Type"],
+  })
+);
 
 app.use(express.json());
 
 // Create/connect SQLite database
-const db = new sqlite3.Database("./database.db", (err) => {
-  if (err) console.error(err.message);
-  else console.log("Connected to SQLite database.");
-});
+let db;
+try {
+  db = new Database("./database.db");
+  console.log("Connected to SQLite database.");
+} catch (err) {
+  console.error("Failed to connect to SQLite:", err.message);
+}
 
 // Create tables if they don't exist
-db.run(`
+db.exec(`
   CREATE TABLE IF NOT EXISTS projects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_name TEXT,
@@ -30,7 +35,8 @@ db.run(`
     acres REAL
   )
 `);
-db.run(`
+
+db.exec(`
   CREATE TABLE IF NOT EXISTS services (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id INTEGER,
@@ -43,50 +49,61 @@ db.run(`
 // Get last N projects
 app.get("/projects", (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
-  db.all("SELECT * FROM projects ORDER BY id DESC LIMIT ?", [limit], (err, rows) => {
-    if (err) return res.json({ success: false, error: err.message });
+  try {
+    const rows = db
+      .prepare("SELECT * FROM projects ORDER BY id DESC LIMIT ?")
+      .all(limit);
     res.json({ success: true, projects: rows });
-  });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
 });
 
 // Get a single project with services
 app.get("/project/:id", (req, res) => {
   const projectId = req.params.id;
 
-  db.get("SELECT * FROM projects WHERE id = ?", [projectId], (err, project) => {
-    if (err) return res.json({ success: false, error: err.message });
-    if (!project) return res.json({ success: false, error: "Project not found" });
+  try {
+    const project = db
+      .prepare("SELECT * FROM projects WHERE id = ?")
+      .get(projectId);
 
-    db.all(
-      "SELECT type, data FROM services WHERE project_id = ?",
-      [projectId],
-      (err, services) => {
-        if (err) return res.json({ success: false, error: err.message });
+    if (!project) {
+      return res.json({ success: false, error: "Project not found" });
+    }
 
-        const parsedServices = {};
-        services.forEach(s => {
-          parsedServices[s.type] = JSON.parse(s.data);
-        });
+    const services = db
+      .prepare("SELECT type, data FROM services WHERE project_id = ?")
+      .all(projectId);
 
-        res.json({ success: true, project, services: parsedServices });
-      }
-    );
-  });
+    const parsedServices = {};
+    services.forEach((s) => {
+      parsedServices[s.type] = JSON.parse(s.data);
+    });
+
+    res.json({ success: true, project, services: parsedServices });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
 });
 
 // Delete a project and its services
 app.delete("/project/:id", (req, res) => {
   const projectId = req.params.id;
 
-  db.run("DELETE FROM services WHERE project_id = ?", [projectId], function(err) {
-    if (err) return res.json({ success: false, error: err.message });
+  try {
+    const deleteServices = db
+      .prepare("DELETE FROM services WHERE project_id = ?")
+      .run(projectId);
 
-    db.run("DELETE FROM projects WHERE id = ?", [projectId], function(err) {
-      if (err) return res.json({ success: false, error: err.message });
+    const deleteProject = db
+      .prepare("DELETE FROM projects WHERE id = ?")
+      .run(projectId);
 
-      res.json({ success: true });
-    });
-  });
+    res.json({ success: true });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
 });
 
 // Save project + services
@@ -94,26 +111,29 @@ app.post("/project", (req, res) => {
   const { project, services } = req.body;
   const { projectName, date, acres } = project;
 
-  db.run(
-    `INSERT INTO projects (project_name, date, acres) VALUES (?, ?, ?)`,
-    [projectName, date, acres],
-    function (err) {
-      if (err) return res.json({ success: false, error: err.message });
+  try {
+    // Insert project
+    const info = db
+      .prepare(
+        "INSERT INTO projects (project_name, date, acres) VALUES (?, ?, ?)"
+      )
+      .run(projectName, date, acres);
 
-      const projectId = this.lastID;
+    const projectId = info.lastInsertRowid;
 
-      const stmt = db.prepare(
-        `INSERT INTO services (project_id, type, data) VALUES (?, ?, ?)`
-      );
+    // Insert services
+    const stmt = db.prepare(
+      "INSERT INTO services (project_id, type, data) VALUES (?, ?, ?)"
+    );
 
-      Object.entries(services).forEach(([type, data]) => {
-        stmt.run(projectId, type, JSON.stringify(data));
-      });
-
-      stmt.finalize();
-      res.json({ success: true, projectId });
+    for (const [type, data] of Object.entries(services)) {
+      stmt.run(projectId, type, JSON.stringify(data));
     }
-  );
+
+    res.json({ success: true, projectId });
+  } catch (err) {
+    res.json({ success: false, error: err.message });
+  }
 });
 
 app.listen(5000, () => console.log("Server running on port 5000"));
