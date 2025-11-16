@@ -6,7 +6,7 @@ const Database = require("better-sqlite3");
 const app = express();
 app.set("trust proxy", true);
 
-// Enable CORS for local development
+// Enable CORS
 app.use(
   cors({
     origin: "*",
@@ -17,7 +17,9 @@ app.use(
 
 app.use(express.json());
 
-// Create/connect SQLite database
+// -----------------------------------------------------
+// CONNECT TO SQLITE
+// -----------------------------------------------------
 let db;
 try {
   db = new Database("./database.db");
@@ -26,14 +28,16 @@ try {
   console.error("Failed to connect to SQLite:", err.message);
 }
 
-// Create tables if they don't exist
+// -----------------------------------------------------
+// CREATE TABLES
+// -----------------------------------------------------
 db.exec(`
   CREATE TABLE IF NOT EXISTS projects (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     project_name TEXT,
     date TEXT,
     acres REAL
-  )
+  );
 `);
 
 db.exec(`
@@ -43,27 +47,77 @@ db.exec(`
     type TEXT,
     data TEXT,
     FOREIGN KEY(project_id) REFERENCES projects(id)
-  )
+  );
 `);
 
-// Get last N projects
+db.exec(`
+  CREATE TABLE IF NOT EXISTS rates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE,
+    value REAL,
+    category TEXT,
+    unit TEXT
+  );
+`);
+
+// -----------------------------------------------------
+// INSERT DEFAULT RATES IF TABLE IS EMPTY
+// -----------------------------------------------------
+const rateCount = db.prepare(`SELECT COUNT(*) AS c FROM rates`).get().c;
+
+if (rateCount === 0) {
+  const defaults = [
+    { name: "mower_hourly", value: 65, category: "mowing", unit: "$/hr" },
+    { name: "mulching_rate_per_yard", value: 125, category: "mulching", unit: "$/yd" },
+    { name: "labor_rate", value: 45, category: "global", unit: "$/hr" },
+    { name: "dump_fee", value: 65, category: "leaves", unit: "$" },
+    { name: "leaf_rate_per_cubic", value: 275, category: "leaves", unit: "$/cubic" },
+
+    // Your mowing unit prices
+    { name: "unit_72", value: 51, category: "mowing", unit: "$" },
+    { name: "unit_60", value: 61, category: "mowing", unit: "$" },
+    { name: "unit_48", value: 56, category: "mowing", unit: "$" },
+    { name: "unit_trimmer", value: 55, category: "mowing", unit: "$/hr" }
+  ];
+
+  const insertStmt = db.prepare(`
+    INSERT INTO rates (name, value, category, unit)
+    VALUES (?, ?, ?, ?)
+  `);
+
+  const insertMany = db.transaction((rows) => {
+    rows.forEach((r) => insertStmt.run(r.name, r.value, r.category, r.unit));
+  });
+
+  insertMany(defaults);
+
+  console.log("Default rates inserted.");
+}
+
+// -----------------------------------------------------
+// GET LAST N PROJECTS
+// -----------------------------------------------------
 app.get("/projects", (req, res) => {
-  const limit = parseInt(req.query.limit) || 10;
   try {
+    const limit = parseInt(req.query.limit) || 10;
+
     const rows = db
       .prepare("SELECT * FROM projects ORDER BY id DESC LIMIT ?")
       .all(limit);
+
     res.json({ success: true, projects: rows });
   } catch (err) {
     res.json({ success: false, error: err.message });
   }
 });
 
-// Get a single project with services
+// -----------------------------------------------------
+// GET SINGLE PROJECT + SERVICES
+// -----------------------------------------------------
 app.get("/project/:id", (req, res) => {
-  const projectId = req.params.id;
-
   try {
+    const projectId = req.params.id;
+
     const project = db
       .prepare("SELECT * FROM projects WHERE id = ?")
       .get(projectId);
@@ -87,18 +141,15 @@ app.get("/project/:id", (req, res) => {
   }
 });
 
-// Delete a project and its services
+// -----------------------------------------------------
+// DELETE PROJECT + SERVICES
+// -----------------------------------------------------
 app.delete("/project/:id", (req, res) => {
-  const projectId = req.params.id;
-
   try {
-    const deleteServices = db
-      .prepare("DELETE FROM services WHERE project_id = ?")
-      .run(projectId);
+    const projectId = req.params.id;
 
-    const deleteProject = db
-      .prepare("DELETE FROM projects WHERE id = ?")
-      .run(projectId);
+    db.prepare("DELETE FROM services WHERE project_id = ?").run(projectId);
+    db.prepare("DELETE FROM projects WHERE id = ?").run(projectId);
 
     res.json({ success: true });
   } catch (err) {
@@ -106,12 +157,14 @@ app.delete("/project/:id", (req, res) => {
   }
 });
 
-// Save project + services
+// -----------------------------------------------------
+// SAVE PROJECT + SERVICES
+// -----------------------------------------------------
 app.post("/project", (req, res) => {
-  const { project, services } = req.body;
-  const { projectName, date, acres } = project;
-
   try {
+    const { project, services } = req.body;
+    const { projectName, date, acres } = project;
+
     // Insert project
     const info = db
       .prepare(
@@ -122,13 +175,18 @@ app.post("/project", (req, res) => {
     const projectId = info.lastInsertRowid;
 
     // Insert services
-    const stmt = db.prepare(
-      "INSERT INTO services (project_id, type, data) VALUES (?, ?, ?)"
-    );
+    const insertService = db.prepare(`
+      INSERT INTO services (project_id, type, data)
+      VALUES (?, ?, ?)
+    `);
 
-    for (const [type, data] of Object.entries(services)) {
-      stmt.run(projectId, type, JSON.stringify(data));
-    }
+    const insertMany = db.transaction((objects) => {
+      for (const [type, data] of Object.entries(objects)) {
+        insertService.run(projectId, type, JSON.stringify(data));
+      }
+    });
+
+    insertMany(services);
 
     res.json({ success: true, projectId });
   } catch (err) {
@@ -136,4 +194,50 @@ app.post("/project", (req, res) => {
   }
 });
 
+// -----------------------------------------------------
+// GET ALL RATES
+// -----------------------------------------------------
+app.get("/rates", (req, res) => {
+  try {
+    const rows = db
+      .prepare("SELECT name, value, category, unit FROM rates")
+      .all();
+
+    res.json({ success: true, rates: rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// -----------------------------------------------------
+// UPDATE RATE BY NAME
+// -----------------------------------------------------
+app.put("/rates/:name", (req, res) => {
+  try {
+    const { name } = req.params;
+    const { value } = req.body;
+
+    if (typeof value !== "number") {
+      return res
+        .status(400)
+        .json({ success: false, error: "Value must be a number" });
+    }
+
+    const result = db
+      .prepare("UPDATE rates SET value = ? WHERE name = ?")
+      .run(value, name);
+
+    if (result.changes === 0) {
+      return res
+        .status(404)
+        .json({ success: false, error: "Rate not found" });
+    }
+
+    res.json({ success: true, updated: result.changes });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// -----------------------------------------------------
 app.listen(5000, () => console.log("Server running on port 5000"));
