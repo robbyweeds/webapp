@@ -2,9 +2,35 @@ import React, { useCallback, useMemo } from "react";
 import LabeledInput from "./LabeledInput";
 import { useServiceContext } from "../context/ServiceContext";
 
+// Define the available efficiency factors for the main deck areas
+const EFFICIENCY_OPTIONS = [
+  "OBSTACLES", "HOA_HOMES", "AVERAGE", "OPEN_LAWN", "FIELDS", "MONTHLY", "DOUBLE_CUT"
+];
+
+// Define the available efficiency factors for Trimmer/Blower
+const SMPWR_EFFICIENCY_OPTIONS = [
+  "MINIMUM", "LESS", "AVERAGE", "HOA_HOMES", "HIGH_END_DETAILING"
+];
+
+// Define the keys that use the main deck efficiency dropdowns
+const AREA_KEYS_FOR_DROPDOWN = [
+    "72-area1", "72-area2", "60-area1", "60-area2", "48-area1", "48-area2"
+];
+
+// Define the keys that use the small power efficiency dropdowns
+const SMPWR_KEYS_FOR_DROPDOWN = [
+    "TRIMMER", "BLOWER"
+];
+
 // Define the default structure for Mowing data
 const INITIAL_MOWING_DATA = {
   name: "Mowing Area",
+  selectedEfficiency: {
+    "72-area1": "AVERAGE", "72-area2": "AVERAGE",
+    "60-area1": "AVERAGE", "60-area2": "AVERAGE",
+    "48-area1": "AVERAGE", "48-area2": "AVERAGE",
+    TRIMMER: "AVERAGE", BLOWER: "AVERAGE", ROTARY: "AVERAGE",
+  },
   acres: {
     "72-area1": 0, "72-area2": 0, "60-area1": 0, "60-area2": 0,
     "48-area1": 0, "48-area2": 0, TRIMMER: 0, BLOWER: 0, ROTARY: 0,
@@ -37,6 +63,7 @@ export default function MowingTable({ tableId }) {
 
   const tableEntry = serviceData.find((t) => t.id === tableId) || { id: tableId, data: {} };
   
+  // 1. DEFINE 'data' FIRST
   const data = useMemo(() => ({
     ...INITIAL_MOWING_DATA,
     name: tableEntry.data.name || INITIAL_MOWING_DATA.name,
@@ -45,7 +72,13 @@ export default function MowingTable({ tableId }) {
     qtyUnit: { ...INITIAL_MOWING_DATA.qtyUnit, ...tableEntry.data.qtyUnit },
     unitPrice: { ...INITIAL_MOWING_DATA.unitPrice, ...tableEntry.data.unitPrice },
     summary: { ...INITIAL_MOWING_DATA.summary, ...tableEntry.data.summary },
+    selectedEfficiency: { 
+        ...INITIAL_MOWING_DATA.selectedEfficiency, 
+        ...tableEntry.data.selectedEfficiency 
+    },
   }), [tableEntry.data]);
+
+  // 2. DEFINE HANDLERS (They rely on 'data')
 
   const handleRowChange = useCallback((rowKey, inputKey) => (e) => {
     const val = e.target.type === 'number' ? parseFloat(e.target.value) : e.target.value;
@@ -61,6 +94,20 @@ export default function MowingTable({ tableId }) {
     updateService("mowing", updatedMowingArray);
   }, [data, tableId, serviceData, updateService]);
 
+  const handleEfficiencyChange = useCallback((key) => (e) => {
+    const newVal = e.target.value;
+
+    const updatedEfficiency = { ...data.selectedEfficiency, [key]: newVal };
+    const updatedTableData = { ...data, selectedEfficiency: updatedEfficiency };
+
+    const updatedMowingArray = serviceData.map((t) =>
+      t.id === tableId ? { id: tableId, data: updatedTableData } : t
+    );
+
+    updateService("mowing", updatedMowingArray);
+  }, [data, tableId, serviceData, updateService]);
+
+
   const handleNameChange = useCallback((e) => {
     const newName = e.target.value;
     
@@ -74,7 +121,8 @@ export default function MowingTable({ tableId }) {
   }, [data, tableId, serviceData, updateService]);
 
 
-  // --- CALCULATIONS ---
+  // 3. DEFINE CALCULATIONS
+
   const { totalRow, sumHours, sumAcres, totalOccDollar, adjDollar, finalTotal } = useMemo(() => {
     const totalRow = {};
     let totalOccDollar = 0; 
@@ -151,7 +199,7 @@ export default function MowingTable({ tableId }) {
             </th>
           </tr>
 
-          {/* Row 2: Sub-headers */}
+          {/* Row 2: Sub-headers (STATIC TEXT RESTORED) */}
           <tr>
             <th>area1</th> <th>area2</th> <th>area1</th> <th>area2</th>
             <th>area1</th> <th>area2</th> <th>TRIMMER</th> <th>BLOWER</th> <th>ROTARY</th>
@@ -159,43 +207,79 @@ export default function MowingTable({ tableId }) {
         </thead>
 
         <tbody>
-          {/* Row 1: EFFICIENCY (Static Row) - 12 columns + 2 summary columns */}
+          {/* Row 1: EFFICIENCY (DROPDOWNS) */}
           <tr style={{ backgroundColor: "#e9f7ef", fontWeight: "bold" }}>
             <td>EFFICIENCY</td> {/* ITEM (1) */}
             <td style={{ backgroundColor: "#ccc" }}></td> {/* MISC (1) */}
-            <td>Wide Open</td> {/* 72 area 1 (1) */}
-            <td>Average</td> {/* 72 area 2 (1) */}
-            <td>Average</td> {/* 60 area 1 (1) */}
-            <td>Average</td> {/* 60 area 2 (1) */}
-            <td>Average</td> {/* 48 area 1 (1) */}
-            <td>Average</td> {/* 48 area 2 (1) */}
-            <td colSpan="2"></td> {/* TRIMMER + BLOWER (2) */}
-            <td>Average</td> {/* ROTARY (1) */}
+            
+            {/* 1. Main Deck Area Dropdowns */}
+            {AREA_KEYS_FOR_DROPDOWN.map(key => (
+                <td key={key}>
+                    <select 
+                        value={data.selectedEfficiency[key]} 
+                        onChange={handleEfficiencyChange(key)}
+                        style={{ width: '100%', padding: '5px' }}
+                    >
+                        {EFFICIENCY_OPTIONS.map(option => (
+                            <option key={option} value={option}>{option.replace('_', ' ')}</option>
+                        ))}
+                    </select>
+                </td>
+            ))}
+            
+            {/* 2. Small Power (Trimmer/Blower) Dropdowns */}
+            {SMPWR_KEYS_FOR_DROPDOWN.map(key => (
+                <td key={key}>
+                    <select 
+                        value={data.selectedEfficiency[key]} 
+                        onChange={handleEfficiencyChange(key)}
+                        style={{ width: '100%', padding: '5px' }}
+                    >
+                        {SMPWR_EFFICIENCY_OPTIONS.map(option => (
+                            <option key={option} value={option}>{option.replace('_', ' ')}</option>
+                        ))}
+                    </select>
+                </td>
+            ))}
+            
+            {/* 3. Rotary (Shaded and blank) */}
+            <td style={{ backgroundColor: "#ccc" }}></td> 
+            
             <td></td> {/* 5111 (1) */}
             <td>HRS/OCC:</td>
             <td style={{ backgroundColor: "#eef" }}>{sumHours.toFixed(2)}</td>
           </tr>
-
-          {/* Row 2: ACRES (Input) - 12 columns + 2 summary columns */}
+          
+          {/* Row 2: ACRES (TRIMMER, BLOWER, ROTARY are shaded) */}
           <tr>
             <td>ACRES</td> {/* ITEM (1) */}
             <td style={{ backgroundColor: "#ccc" }}></td> {/* MISC (1) */}
-            {mainKeys.map((key) => ( // 9 columns (72-area1 to ROTARY)
-              <td key={key}>
-                <LabeledInput
-                  value={data.acres[key]}
-                  onChange={handleRowChange("acres", key)}
-                  step={0.25} min={0} label="Acres"
-                />
-              </td>
-            ))}
-            {/* FIX: The final blank cell must use colSpan="1" to fill only the 5111 column */}
+            
+            {/* Loop through all 9 keys (72-area1 to ROTARY) */}
+            {mainKeys.map((key) => {
+                // Check if the key is for Trimmer, Blower, or Rotary
+                if (SMPWR_KEYS_FOR_DROPDOWN.includes(key) || key === 'ROTARY') {
+                    return <td key={key} style={{ backgroundColor: "#ccc" }}></td>;
+                }
+                
+                // Otherwise, render the Acres input field
+                return (
+                    <td key={key}>
+                        <LabeledInput
+                            value={data.acres[key]}
+                            onChange={handleRowChange("acres", key)}
+                            step={0.25} min={0} label="Acres"
+                        />
+                    </td>
+                );
+            })}
+            
             <td style={{ backgroundColor: "#eef" }}></td> {/* 5111 Column (1) */}
             <td>ACRES:</td>
             <td style={{ backgroundColor: "#eef" }}>{sumAcres.toFixed(2)}</td>
           </tr>
 
-          {/* Row 3: QTY/UNIT (Hours Input) - 12 columns + 2 summary columns */}
+          {/* Row 3: QTY/UNIT (Hours Input) */}
           <tr>
             <td>QTY/UNIT</td> {/* ITEM (1) */}
             {/* MISC Hours Input (1) */}
@@ -221,7 +305,7 @@ export default function MowingTable({ tableId }) {
             <td style={{ backgroundColor: "#eef" }}>${totalOccDollar.toFixed(2)}</td>
           </tr>
 
-          {/* Row 4: UNIT $ (Price Display & ADJ% Input) - 12 columns + 2 summary columns */}
+          {/* Row 4: UNIT $ (Price Display & ADJ% Input) */}
           <tr>
             <td>UNIT $</td> {/* ITEM (1) */}
             {/* MISC Price Display (1) */}
@@ -248,7 +332,7 @@ export default function MowingTable({ tableId }) {
             </td>
           </tr>
           
-          {/* Row 5: TOTAL (Calculation) - Final Row - 12 columns + 2 summary columns */}
+          {/* Row 5: TOTAL (Calculation) - Final Row */}
           <tr style={{ backgroundColor: "#f2f2f2", fontWeight: "bold" }}>
             <td>TOTAL</td> {/* ITEM (1) */}
             {/* MISC Total Calculation (1) */}
