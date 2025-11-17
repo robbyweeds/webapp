@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useServiceContext } from "../context/ServiceContext";
+
 import MowingTable from "./MowingTable";
+import EdgingTable from "./EdgingTable";
+import BedMaintenanceTable from "./BedMaintenanceTable";
 
 export default function MowingForm() {
   const navigate = useNavigate();
@@ -9,37 +12,63 @@ export default function MowingForm() {
 
   const [tables, setTables] = useState([]);
 
+  // ---------- INITIAL LOAD ----------
   useEffect(() => {
-    // Ensure currentServices.mowing is always an array
-    const mowingData = Array.isArray(currentServices.mowing) ? currentServices.mowing : [];
+    const services = getAllServices() || {};
+
+    // --------- Ensure Edging exists ---------
+    if (!services.edging) {
+      updateService("edging", { id: "Edging1", data: {} });
+    }
+
+    // ----- Ensure Bed Maintenance exists -----
+    if (!services.bedMaintenance) {
+      updateService("bedMaintenance", { id: "Bed1", data: {} });
+    }
+
+    // ------------- Handle Mowing tables -------------
+    const mowingData = Array.isArray(currentServices.mowing)
+      ? currentServices.mowing
+      : [];
 
     if (mowingData.length === 0) {
-      // Initialize with 1 table
       setTables([{ id: "Mowing1" }]);
       updateService("mowing", [{ id: "Mowing1", data: {} }]);
     } else {
       setTables(mowingData.map((t, i) => ({ id: t.id || `Mowing${i + 1}` })));
     }
-  }, [currentServices, updateService]);
+  }, [currentServices, updateService, getAllServices]);
 
+  // ---------- ADD MOWING TABLE ----------
   const handleAddTable = () => {
     const newId = `Mowing${tables.length + 1}`;
-    setTables(prev => [...prev, { id: newId }]);
     const services = getAllServices() || {};
     const mowing = Array.isArray(services.mowing) ? services.mowing : [];
+
+    setTables(prev => [...prev, { id: newId }]);
     updateService("mowing", [...mowing, { id: newId, data: {} }]);
   };
 
   const handleSave = () => {
-    const services = getAllServices() || {};
-    const updatedMowing = tables.map(t => ({ id: t.id, data: {} })); // Placeholder
+    const updatedMowing = tables.map(t => ({ id: t.id, data: {} }));
     updateService("mowing", updatedMowing);
-    alert("Mowing data saved in context.");
+    alert("Data saved in context.");
   };
 
   return (
     <div style={{ padding: "2rem" }}>
-      <h2>Mowing Service</h2>
+      <h2>Service Entry</h2>
+
+      {/* ------------------- EDGING TABLE ------------------- */}
+      <h3>Edging</h3>
+      <EdgingTable tableId="Edging1" />
+
+      {/* ----------------- BED MAINTENANCE TABLE ----------------- */}
+      <h3 style={{ marginTop: "2rem" }}>Bed Maintenance</h3>
+      <BedMaintenanceTable tableId="Bed1" />
+
+      {/* ----------------------- MOWING TABLES ----------------------- */}
+      <h3 style={{ marginTop: "2rem" }}>Mowing</h3>
 
       {tables.map(table => (
         <MowingTable key={table.id} tableId={table.id} />
@@ -60,6 +89,7 @@ export default function MowingForm() {
         >
           Add Mowing Table
         </button>
+
         <button
           onClick={handleSave}
           style={{
@@ -71,8 +101,9 @@ export default function MowingForm() {
             cursor: "pointer"
           }}
         >
-          Save Mowing Data
+          Save All Data
         </button>
+
         <button
           onClick={() => navigate("/mowing-rates")}
           style={{
@@ -82,11 +113,10 @@ export default function MowingForm() {
             border: "none",
             borderRadius: "5px",
             cursor: "pointer"
-            }}
-            >
+          }}
+        >
           Edit Mowing Rates
         </button>
-
       </div>
 
       <div style={{ marginTop: "2rem" }}>
