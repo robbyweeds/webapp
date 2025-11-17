@@ -12,7 +12,7 @@ import {
   SMPWR_EFFICIENCY_OPTIONS,
   DECK_KEYS,
   SMPWR_KEYS,
-  ROTARY_KEY,
+ // ROTARY_KEY,
 } from "./mowingDefaults";
 
 import { computeHours, computeTotals } from "./mowingCalculations";
