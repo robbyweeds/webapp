@@ -1,121 +1,167 @@
-import React, { useEffect, useState } from "react";
+// =======================================
+// ServicesPage.jsx — FINAL WORKING VERSION
+// =======================================
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useServiceContext } from "../context/ServiceContext";
 
 export default function ServicesPage() {
   const navigate = useNavigate();
-  const { currentServices, updateService, getAllServices } = useServiceContext();
+  const { currentServices, updateService } = useServiceContext();
 
-  const API_URL = process.env.REACT_APP_API_URL;
+  const mowing = Array.isArray(currentServices.mowing)
+    ? currentServices.mowing
+    : [];
 
-  const [project, setProject] = useState({ projectName: "", date: "", acres: "" });
+  const edging = Array.isArray(currentServices.edging)
+    ? currentServices.edging
+    : [];
 
-  useEffect(() => {
-    const storedProject = JSON.parse(localStorage.getItem("project"));
-    if (storedProject) setProject(storedProject);
-  }, []);
+  const bedMaint = Array.isArray(currentServices.bedMaintenance)
+    ? currentServices.bedMaintenance
+    : [];
 
-  const handleSaveProject = async () => {
-    const services = getAllServices() || {};
-    const sanitizedServices = {};
-    Object.entries(services).forEach(([key, value]) => (sanitizedServices[key] = value || {}));
-
-    if (!project.projectName || !project.date || !project.acres) {
-      alert("Project info is missing");
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_URL}/project`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project, services: sanitizedServices }),
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        alert("Project saved successfully!");
-        navigate("/");
-      } else {
-        alert("Error saving project: " + data.error);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("Network error saving project");
-    }
+  // ----------------------------------
+  // DELETE Mowing Table
+  // ----------------------------------
+  const deleteMowing = (id) => {
+    const updated = mowing.filter((t) => t.id !== id);
+    updateService("mowing", updated);
   };
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "600px", margin: "auto" }}>
-      <h2>Services for {project.projectName || "New Project"}</h2>
+    <div style={{ padding: "2rem" }}>
+      <h2>Services Overview</h2>
 
-      <section>
-        <h3>Mowing / Edging / Bed Maintenance</h3>
-        <button onClick={() => navigate("/services/mowing")}>Add Mowing</button>
-        <button onClick={() => navigate("/services/edging")}>Add Edging</button>
-        <button onClick={() => navigate("/services/bedMaintenance")}>Add Bed Maintenance</button>
-      </section>
+      {/* ============ MOWING ============ */}
+      <h3 style={{ marginTop: "1.5rem" }}>Mowing</h3>
 
-      <section>
-        <h3>Mulching</h3>
-        <button onClick={() => navigate("/services/mulching")}>Add Mulching</button>
-      </section>
+      {mowing.length === 0 ? (
+        <p>No mowing services added.</p>
+      ) : (
+        mowing.map((t) => {
+          const d = t.data || {};
+          const totals = d.totals || {};
 
-      <section>
-        <h3>Pruning</h3>
-        <button onClick={() => navigate("/services/pruning")}>Add Pruning</button>
-      </section>
+          return (
+            <div
+              key={t.id}
+              style={{
+                border: "1px solid #aaa",
+                padding: "1rem",
+                marginBottom: "1rem",
+                borderRadius: "8px",
+                background: "#fafafa",
+                position: "relative",
+              }}
+            >
+              {/* DELETE BUTTON */}
+              <button
+                onClick={() => deleteMowing(t.id)}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "12px",
+                  padding: "6px 12px",
+                  background: "#dc3545",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "20px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                }}
+              >
+                Delete
+              </button>
 
-      <section>
-        <h3>Leaves</h3>
-        <button onClick={() => navigate("/services/leaves")}>Add Leaves</button>
-      </section>
+              <h4 style={{ marginBottom: "0.5rem" }}>
+                {d.name || "Mowing Area"}
+              </h4>
 
-      <button onClick={handleSaveProject} style={{ marginTop: "1rem" }}>
-        Save Project
-      </button>
+              <div style={{ fontSize: "0.9rem", lineHeight: "1.4rem" }}>
+                <div><strong># Occurrences: </strong>{d.summary?.numOccurrences}</div>
+                <div><strong>Price per Occurrence: </strong>${totals.totalOcc?.toFixed(2)}</div>
+                <div><strong>Adjusted Price: </strong>${totals.adjDollar?.toFixed(2)}</div>
+                <div><strong>Total Price: </strong>${totals.final?.toFixed(2)}</div>
+              </div>
+            </div>
+          );
+        })
+      )}
 
-      {/* --- PROJECT + SERVICES PREVIEW SECTION --- */}
-      <div style={{ marginTop: "2rem", padding: "1rem", borderTop: "1px solid #ccc" }}>
-        <h3>Current Project Summary</h3>
+      {/* ============ EDGING + BED MAINT ============ */}
+      <h3 style={{ marginTop: "2rem" }}>Edging & Bed Maintenance</h3>
 
-        <p>
-          <strong>Project Name:</strong> {project.projectName || "(none)"}
-        </p>
-        <p>
-          <strong>Date:</strong> {project.date || "(none)"}
-        </p>
-        <p>
-          <strong>Acres:</strong> {project.acres || "(none)"}
-        </p>
+      <div
+        style={{
+          border: "1px solid #aaa",
+          padding: "1rem",
+          borderRadius: "8px",
+          background: "#f8f8ff",
+          marginBottom: "1rem",
+        }}
+      >
+        {/* EDGING */}
+        <h4>Edging</h4>
+        {edging.length === 0 ? (
+          <p style={{ marginLeft: "1rem" }}>No edging data.</p>
+        ) : (
+          edging.map((e) => {
+            const d = e.data || {};
+            const totals = d.totals || {};
 
-        {/* MOWING PREVIEW */}
-        {currentServices.mowing && currentServices.mowing.length > 0 && (
-          <div style={{ marginTop: "1rem" }}>
-            <h4>Mowing Data</h4>
-            {currentServices.mowing.map((table, idx) => {
-              const d = table.data || {};
-              return (
-                <div key={idx} style={{ marginBottom: "0.5rem", paddingLeft: "1rem" }}>
-                  <strong>{table.id || `Mowing ${idx + 1}`}</strong>
-                  <ul style={{ margin: 0, paddingLeft: "1.5rem" }}>
-                    <li>72" Area1: {d["72-area1"] ?? 0}</li>
-                    <li>72" Area2: {d["72-area2"] ?? 0}</li>
-                    <li>60" Area1: {d["60-area1"] ?? 0}</li>
-                    <li>60" Area2: {d["60-area2"] ?? 0}</li>
-                    <li>48" Area1: {d["48-area1"] ?? 0}</li>
-                    <li>48" Area2: {d["48-area2"] ?? 0}</li>
-                    <li>Trimmer: {d.TRIMMER ?? 0}</li>
-                    <li>Blower: {d.BLOWER ?? 0}</li>
-                    <li>Rotary: {d.ROTARY ?? 0}</li>
-                  </ul>
+            return (
+              <div key={e.id} style={{ marginBottom: "1rem" }}>
+                <div><strong># Occurrences: </strong>{d.summary?.numOccurrences}</div>
+                <div>
+                  <strong>$/Occ: </strong>
+                  ${totals?.totalOccDollar?.toFixed(2) ?? "0.00"}
                 </div>
-              );
-            })}
-          </div>
+                <div>
+                  <strong>Total Price: </strong>
+                  ${totals?.finalTotal?.toFixed(2) ?? "0.00"}
+                </div>
+              </div>
+            );
+          })
+        )}
+
+        {/* BED MAINTENANCE */}
+        <h4 style={{ marginTop: "1rem" }}>Bed Maintenance</h4>
+        {bedMaint.length === 0 ? (
+          <p style={{ marginLeft: "1rem" }}>No bed maintenance data.</p>
+        ) : (
+          bedMaint.map((b) => {
+            const d = b.data || {};
+            const totals = d.totals || {};
+
+            return (
+              <div key={b.id} style={{ marginBottom: "1rem" }}>
+                <div><strong># Occurrences: </strong>{d.summary?.numOccurrences}</div>
+                <div>
+                  <strong>$/Occ: </strong>
+                  ${totals?.totalOccDollar?.toFixed(2) ?? "0.00"}
+                </div>
+                <div>
+                  <strong>Total Price: </strong>
+                  ${totals?.finalTotal?.toFixed(2) ?? "0.00"}
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
-      {/* --- END PREVIEW SECTION --- */}
+
+      <button
+        onClick={() => navigate(-1)}
+        style={{
+          padding: "10px 20px",
+          borderRadius: "5px",
+          cursor: "pointer",
+        }}
+      >
+        Back
+      </button>
     </div>
   );
 }

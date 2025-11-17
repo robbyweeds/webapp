@@ -1,8 +1,11 @@
+// ===============================
+// MowingForm.jsx — FIXED + FINAL
+// ===============================
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useServiceContext } from "../context/ServiceContext";
 
-import MowingTable from "./MowingTable";
+import MowingTable from "./Mowing/MowingTable";
 import ServiceTablesWrapper from "./ServiceTablesWrapper";
 
 export default function MowingForm() {
@@ -11,86 +14,49 @@ export default function MowingForm() {
   const {
     currentServices,
     updateService,
-    getAllServices,
-    currentRates, // ⭐ now included so MowingForm refreshes when rates change
   } = useServiceContext();
 
   const [tables, setTables] = useState([]);
 
   // -------------------------------------
-  // INITIAL LOAD — ALSO RELOAD WHEN RATES CHANGE
+  // 1. ENSURE A FIRST TABLE EXISTS (only once)
   // -------------------------------------
   useEffect(() => {
-    const services = getAllServices() || {};
-
-    // Ensure Edging exists
-    if (!Array.isArray(services.edging) || services.edging.length === 0) {
-      updateService("edging", [{ id: "Edging1", data: {} }]);
+    if (!currentServices.mowing || currentServices.mowing.length === 0) {
+      updateService("mowing", [{ id: "Mowing1", data: {} }]);
     }
+  }, []);
 
-    // Ensure Bed Maintenance exists
-    if (!Array.isArray(services.bedMaintenance) || services.bedMaintenance.length === 0) {
-      updateService("bedMaintenance", [{ id: "Bed1", data: {} }]);
-    }
-
-    // Handle Mowing tables
-    const mowingData = Array.isArray(currentServices.mowing)
+  // -------------------------------------
+  // 2. SYNC WITH CONTEXT ANY TIME IT UPDATES
+  // -------------------------------------
+  useEffect(() => {
+    const mowing = Array.isArray(currentServices.mowing)
       ? currentServices.mowing
       : [];
 
-    if (mowingData.length === 0) {
-      const first = [{ id: "Mowing1", data: {} }];
-      setTables(first);
-      updateService("mowing", first);
-    } else {
-      setTables(mowingData.map((t) => ({ id: t.id })));
-    }
-  }, [
-    currentServices.mowing,
-    currentRates, // ⭐ ensures MowingTable recalculates immediately after saving rates
-    updateService,
-    getAllServices,
-  ]);
+    setTables(mowing);
+  }, [currentServices.mowing]);
 
   // -------------------------------------
-  // ADD A NEW MOWING TABLE
+  // ADD NEW MOWING TABLE
   // -------------------------------------
   const handleAddTable = () => {
     const newId = `Mowing${tables.length + 1}`;
-    const services = getAllServices();
-    const mowing = Array.isArray(services.mowing) ? services.mowing : [];
+    const updated = [...tables, { id: newId, data: {} }];
 
-    const updated = [...mowing, { id: newId, data: {} }];
+    setTables(updated);
     updateService("mowing", updated);
-
-    setTables((prev) => [...prev, { id: newId }]);
   };
 
-  // -------------------------------------
-  // SAVE ALL TABLES (optional)
-  // -------------------------------------
-  const handleSave = () => {
-    // You will likely want to remove this later because it overwrites data
-    const cleaned = tables.map((t) => ({ id: t.id, data: {} }));
-    updateService("mowing", cleaned);
-    alert("Data saved in context.");
-  };
-
-  // -------------------------------------
-  // PAGE RENDER
-  // -------------------------------------
   return (
     <div style={{ padding: "2rem" }}>
       <h2>Service Entry</h2>
 
-      {/* ---------------------------------
-         COMBINED EDGING + BED MAINTENANCE
-      ---------------------------------- */}
+      {/* Edging + Bed Maintenance */}
       <ServiceTablesWrapper tableId="EdgingBedCombined" />
 
-      {/* ---------------------------------
-                MOWING TABLES
-      ---------------------------------- */}
+      {/* Mowing */}
       <h3 style={{ marginTop: "2rem" }}>Mowing</h3>
 
       {tables.map((t) => (
@@ -111,20 +77,6 @@ export default function MowingForm() {
           }}
         >
           Add Mowing Table
-        </button>
-
-        <button
-          onClick={handleSave}
-          style={{
-            padding: "10px 20px",
-            backgroundColor: "#28a745",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
-        >
-          Save All Data
         </button>
 
         <button

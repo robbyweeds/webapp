@@ -1,109 +1,23 @@
+// =====================================
+// MowingTable.jsx — FINAL FIXED VERSION
+// =====================================
 import React, { useMemo } from "react";
-import LabeledInput from "./LabeledInput";
-import { useServiceContext } from "../context/ServiceContext";
+import LabeledInput from "../LabeledInput";
+import { useServiceContext } from "../../context/ServiceContext";
 
-// --------------------------------------
-// OPTIONS
-// --------------------------------------
-const EFFICIENCY_OPTIONS = [
-  "OBSTACLES",
-  "HOA_HOMES",
-  "AVERAGE",
-  "OPEN_LAWN",
-  "FIELDS",
-  "MONTHLY",
-  "DOUBLE_CUT",
-];
-
-const SMPWR_EFFICIENCY_OPTIONS = [
-  "MINIMUM",
-  "LESS",
-  "AVERAGE",
-  "HOA_HOMES",
-  "HIGH_END_DETAILING",
-];
-
-const DECK_KEYS = [
-  "72-area1",
-  "72-area2",
-  "60-area1",
-  "60-area2",
-  "48-area1",
-  "48-area2",
-];
-
-const SMPWR_KEYS = ["TRIMMER", "BLOWER"];
-const ROTARY_KEY = "ROTARY";
-
-const DISPLAY_KEYS = [
-  "MISC_HRS",
-  ...DECK_KEYS,
-  ...SMPWR_KEYS,
+// Shared logic + constants
+import {
+  INITIAL_MOWING_DATA,
+  EFFICIENCY_OPTIONS,
+  SMPWR_EFFICIENCY_OPTIONS,
+  DECK_KEYS,
+  SMPWR_KEYS,
   ROTARY_KEY,
-  "5111",
-];
+} from "./mowingDefaults";
 
-// --------------------------------------
-// DEFAULT DATA
-// --------------------------------------
-const INITIAL_MOWING_DATA = {
-  name: "Mowing Area",
+import { computeHours, computeTotals } from "./mowingCalculations";
+import { saveMowing } from "./mowingSave";
 
-  selectedEfficiency: {
-    "72-area1": "AVERAGE",
-    "72-area2": "AVERAGE",
-    "60-area1": "AVERAGE",
-    "60-area2": "AVERAGE",
-    "48-area1": "AVERAGE",
-    "48-area2": "AVERAGE",
-    TRIMMER: "AVERAGE",
-    BLOWER: "AVERAGE",
-  },
-
-  acres: {
-    "72-area1": 0,
-    "72-area2": 0,
-    "60-area1": 0,
-    "60-area2": 0,
-    "48-area1": 0,
-    "48-area2": 0,
-    TRIMMER: 0,
-    BLOWER: 0,
-    ROTARY: 0,
-  },
-
-  qtyUnit: {
-    MISC_HRS: 0,
-    "72-area1": 0,
-    "72-area2": 0,
-    "60-area1": 0,
-    "60-area2": 0,
-    "48-area1": 0,
-    "48-area2": 0,
-    TRIMMER: 0,
-    BLOWER: 0,
-    ROTARY: 0,
-    "5111": 0,
-  },
-
-  manualOverrides: {
-    "72-area1": null,
-    "72-area2": null,
-    "60-area1": null,
-    "60-area2": null,
-    "48-area1": null,
-    "48-area2": null,
-  },
-
-  summary: {
-    adjPercent: 0,
-    numOccurrences: 1,
-  },
-};
-
-// --------------------------------------
-// COMPONENT
-// --------------------------------------
 export default function MowingTable({ tableId }) {
   const { currentServices, updateService, currentRates } = useServiceContext();
 
@@ -117,11 +31,18 @@ export default function MowingTable({ tableId }) {
   const tableEntry =
     mowingList.find((t) => t.id === tableId) || { id: tableId, data: {} };
 
-  // Merge saved + defaults
-  const data = useMemo(
-    () => ({
+  // ----------------------------------------------------
+  // MERGE DEFAULT DATA + SAVED DATA
+  // ----------------------------------------------------
+  const data = useMemo(() => {
+    return {
       ...INITIAL_MOWING_DATA,
       ...tableEntry.data,
+
+      selectedEfficiency: {
+        ...INITIAL_MOWING_DATA.selectedEfficiency,
+        ...(tableEntry.data.selectedEfficiency || {}),
+      },
 
       acres: {
         ...INITIAL_MOWING_DATA.acres,
@@ -133,80 +54,66 @@ export default function MowingTable({ tableId }) {
         ...(tableEntry.data.qtyUnit || {}),
       },
 
-      selectedEfficiency: {
-        ...INITIAL_MOWING_DATA.selectedEfficiency,
-        ...(tableEntry.data.selectedEfficiency || {}),
-      },
-
       manualOverrides: {
         ...INITIAL_MOWING_DATA.manualOverrides,
         ...(tableEntry.data.manualOverrides || {}),
       },
-    }),
-    [tableEntry.data]
-  );
 
-  // Save back into context
+      summary: {
+        ...INITIAL_MOWING_DATA.summary,
+        ...(tableEntry.data.summary || {}),
+      },
+
+      totals: tableEntry.data.totals || {},
+    };
+  }, [tableEntry.data]);
+
+  // ----------------------------------------------------
+  // COMPUTE HOURS + TOTALS (NO AUTO-SAVE)
+  // ----------------------------------------------------
+  const computedQtyUnit = computeHours(data, acresPerHour);
+  const totals = computeTotals(data, computedQtyUnit, mowingDollars);
+
+  // ----------------------------------------------------
+  // SAVE helper
+  // ----------------------------------------------------
   const save = (updated) => {
-    const newList = mowingList.some((t) => t.id === tableId)
-      ? mowingList.map((t) =>
-          t.id === tableId ? { id: tableId, data: updated } : t
-        )
-      : [...mowingList, { id: tableId, data: updated }];
-
-    updateService("mowing", newList);
+    saveMowing(tableId, updated, mowingList, updateService, totals);
   };
 
-  // --------------------------------------
-  // EVENT HANDLERS
-  // --------------------------------------
-
+  // ----------------------------------------------------
+  // INPUT HANDLERS
+  // ----------------------------------------------------
   const handleNameChange = (e) => {
     save({ ...data, name: e.target.value });
   };
 
-  // Acres change = CLEAR manual override for that deck row
   const handleAcresChange = (key) => (e) => {
     const v = parseFloat(e.target.value) || 0;
-
-    const newOverrides = {
-      ...data.manualOverrides,
-      [key]: null, // RESET OVERRIDE ON ACRES CHANGE
-    };
 
     save({
       ...data,
       acres: { ...data.acres, [key]: v },
-      manualOverrides: newOverrides,
+      manualOverrides: { ...data.manualOverrides, [key]: null },
     });
   };
 
   const handleEfficiencyChange = (key) => (e) => {
-    // Also reset override
-    const newOverrides = {
-      ...data.manualOverrides,
-      [key]: null,
-    };
-
     save({
       ...data,
       selectedEfficiency: {
         ...data.selectedEfficiency,
         [key]: e.target.value,
       },
-      manualOverrides: newOverrides,
+      manualOverrides: { ...data.manualOverrides, [key]: null },
     });
   };
 
   const handleSummaryChange = (k) => (e) => {
     const v = parseFloat(e.target.value) || 0;
-    save({
-      ...data,
-      summary: { ...data.summary, [k]: v },
-    });
+    save({ ...data, summary: { ...data.summary, [k]: v } });
   };
 
-  // Manual override handler (quarter-hour + 2 decimals)
   const handleManualOverride = (key) => (e) => {
     const raw = e.target.value;
 
@@ -230,7 +137,6 @@ export default function MowingTable({ tableId }) {
     });
   };
 
-  // Manual hour fields (always quarter-hour)
   const handleQtyChange = (key) => (e) => {
     let raw = e.target.value;
     if (raw === "") raw = "0";
@@ -247,86 +153,9 @@ export default function MowingTable({ tableId }) {
     });
   };
 
-  // --------------------------------------
-  // COMPUTE HOURS
-  // --------------------------------------
-  const computedQtyUnit = useMemo(() => {
-    const out = { ...data.qtyUnit };
-
-    DECK_KEYS.forEach((key) => {
-      const acres = Number(data.acres[key] || 0);
-      const size = key.split("-")[0];
-      const eff = data.selectedEfficiency[key];
-
-      const rate =
-        acresPerHour?.[size]?.[eff] != null
-          ? acresPerHour[size][eff]
-          : 0;
-
-      const autoValue = rate > 0 ? acres / rate : 0;
-      const autoRounded = Number((Math.round(autoValue * 4) / 4).toFixed(2));
-
-      // If override exists → use it
-      // If not → use recalculated value
-      out[key] =
-        data.manualOverrides[key] !== null
-          ? data.manualOverrides[key]
-          : autoRounded;
-    });
-
-    return out;
-  }, [
-    data.acres,
-    data.selectedEfficiency,
-    data.manualOverrides,
-    data.qtyUnit,
-    acresPerHour,
-  ]);
-
-  // --------------------------------------
-  // TOTALS
-  // --------------------------------------
-  const totals = useMemo(() => {
-    let totalOcc = 0;
-    const rowTotals = {};
-
-    DISPLAY_KEYS.forEach((key) => {
-      const hrs = Number(computedQtyUnit[key] || 0);
-      const price = Number(mowingDollars[key] || 0);
-      const subtotal = hrs * price;
-      rowTotals[key] = subtotal;
-      totalOcc += subtotal;
-    });
-
-    const totalHours = DISPLAY_KEYS.reduce(
-      (sum, key) => sum + Number(computedQtyUnit[key] || 0),
-      0
-    );
-
-    const totalAcres = Object.values(data.acres).reduce(
-      (sum, v) => sum + Number(v || 0),
-      0
-    );
-
-    const adjDollar =
-      totalOcc * (1 + (data.summary.adjPercent || 0) / 100);
-
-    const final =
-      adjDollar * (data.summary.numOccurrences || 1);
-
-    return {
-      totalHours,
-      totalAcres,
-      totalOcc,
-      adjDollar,
-      final,
-      rowTotals,
-    };
-  }, [computedQtyUnit, data.acres, data.summary, mowingDollars]);
-
-  // --------------------------------------
-  // RENDER
-  // --------------------------------------
+  // ----------------------------------------------------
+  // RENDER UI
+  // ----------------------------------------------------
   return (
     <div
       style={{
@@ -336,13 +165,7 @@ export default function MowingTable({ tableId }) {
       }}
     >
       {/* NAME */}
-      <div
-        style={{
-          marginBottom: "1rem",
-          display: "flex",
-          alignItems: "center",
-        }}
-      >
+      <div style={{ marginBottom: "1rem", display: "flex", alignItems: "center" }}>
         <h3 style={{ marginRight: "1rem" }}>Mowing Area Name:</h3>
         <input
           type="text"
@@ -352,6 +175,7 @@ export default function MowingTable({ tableId }) {
         />
       </div>
 
+      {/* TABLE */}
       <table
         border="1"
         style={{
@@ -373,10 +197,7 @@ export default function MowingTable({ tableId }) {
 
             <th rowSpan="2">5111</th>
             <th rowSpan="2"># OCC</th>
-            <th
-              rowSpan="2"
-              style={{ backgroundColor: "yellow" }}
-            >
+            <th rowSpan="2" style={{ backgroundColor: "yellow" }}>
               <LabeledInput
                 value={data.summary.numOccurrences}
                 onChange={handleSummaryChange("numOccurrences")}
@@ -402,7 +223,7 @@ export default function MowingTable({ tableId }) {
         </thead>
 
         <tbody>
-          {/* EFFICIENCY */}
+          {/* EFFICIENCY ROW */}
           <tr style={{ background: "#e9f7ef", fontWeight: "bold" }}>
             <td>EFFICIENCY</td>
             <td style={{ background: "#ccc" }}></td>
@@ -440,14 +261,13 @@ export default function MowingTable({ tableId }) {
             ))}
 
             <td style={{ background: "#ccc" }}></td>
-            <td></td>
             <td>HRS/OCC:</td>
             <td style={{ background: "#eef" }}>
               {totals.totalHours.toFixed(2)}
             </td>
           </tr>
 
-          {/* ACRES */}
+          {/* ACRES ROW */}
           <tr>
             <td>ACRES</td>
             <td style={{ background: "#ccc" }}></td>
@@ -469,22 +289,20 @@ export default function MowingTable({ tableId }) {
             <td style={{ background: "#ccc" }}></td>
             <td style={{ background: "#ccc" }}></td>
 
-            <td></td>
             <td>ACRES:</td>
             <td style={{ background: "#eef" }}>
               {totals.totalAcres.toFixed(2)}
             </td>
           </tr>
 
-          {/* HOURS */}
+          {/* HOURS/QTY ROW */}
           <tr>
             <td>QTY/UNIT</td>
 
-            {/* MISC */}
             <td style={{ background: "#b3d9ff" }}>
               <LabeledInput
                 value={data.qtyUnit.MISC_HRS.toFixed(2)}
-                onChange={handleQtyChange("MISC_HRS")}
+                onChange={handleQtyChange("MISC_H_HRS")}
                 step={0.25}
                 min={0}
                 type="number"
@@ -492,13 +310,12 @@ export default function MowingTable({ tableId }) {
               />
             </td>
 
-            {/* DECK HOURS — AUTO + MANUAL OVERRIDE */}
             {DECK_KEYS.map((key) => (
               <td key={key} style={{ background: "#b3d9ff" }}>
                 <LabeledInput
-                  value={(
-                    data.manualOverrides[key] ?? computedQtyUnit[key]
-                  ).toFixed(2)}
+                  value={(data.manualOverrides[key] ?? computedQtyUnit[key]).toFixed(
+                    2
+                  )}
                   onChange={handleManualOverride(key)}
                   step={0.25}
                   min={0}
@@ -508,7 +325,7 @@ export default function MowingTable({ tableId }) {
               </td>
             ))}
 
-            {/* TRIMMER */}
+            {/* LABOR */}
             <td style={{ background: "#b3d9ff" }}>
               <LabeledInput
                 value={data.qtyUnit.TRIMMER.toFixed(2)}
@@ -520,7 +337,6 @@ export default function MowingTable({ tableId }) {
               />
             </td>
 
-            {/* BLOWER */}
             <td style={{ background: "#b3d9ff" }}>
               <LabeledInput
                 value={data.qtyUnit.BLOWER.toFixed(2)}
@@ -532,7 +348,6 @@ export default function MowingTable({ tableId }) {
               />
             </td>
 
-            {/* ROTARY */}
             <td style={{ background: "#b3d9ff" }}>
               <LabeledInput
                 value={data.qtyUnit.ROTARY.toFixed(2)}
@@ -544,7 +359,6 @@ export default function MowingTable({ tableId }) {
               />
             </td>
 
-            {/* 5111 */}
             <td style={{ background: "#b3d9ff" }}>
               <LabeledInput
                 value={data.qtyUnit["5111"].toFixed(2)}
@@ -562,7 +376,7 @@ export default function MowingTable({ tableId }) {
             </td>
           </tr>
 
-          {/* UNIT PRICE */}
+          {/* UNIT PRICE ROW */}
           <tr>
             <td>UNIT $</td>
 

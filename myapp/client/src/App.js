@@ -8,7 +8,7 @@ import MowingForm from "./components/MowingForm";
 import MulchingForm from "./components/MulchingForm";
 import PruningForm from "./components/PruningForm";
 import LeavesForm from "./components/LeavesForm";
-import MowingRatesPage from "./components/MowingRatesPage";
+import MowingRatesPage from "./components/Mowing/MowingRatesPage";
 
 
 // Context
