@@ -3,8 +3,9 @@ import React, { createContext, useContext, useState } from "react";
 const ServiceContext = createContext(null);
 
 export function ServiceProvider({ children }) {
+
   // ----------------------
-  // DEFAULT MOWING RATES (Fix for missing hours)
+  // DEFAULT MOWING RATES
   // ----------------------
   const DEFAULT_MOWING_FACTORS = {
     acresPerHour: {
@@ -39,42 +40,42 @@ export function ServiceProvider({ children }) {
   };
 
   const DEFAULT_MOWING_DOLLARS = {
-    MISC_HRS: 61.0,
-    "72-area1": 51.0,
-    "72-area2": 61.0,
-    "60-area1": 61.0,
-    "60-area2": 59.0,
-    "48-area1": 56.0,
-    "48-area2": 56.0,
-    TRIMMER: 55.0,
-    BLOWER: 55.0,
-    ROTARY: 55.0,
-    "5111": 100.0,
+    MISC_HRS: 61,
+    "72-area1": 51,
+    "72-area2": 61,
+    "60-area1": 61,
+    "60-area2": 59,
+    "48-area1": 56,
+    "48-area2": 56,
+    TRIMMER: 55,
+    BLOWER: 55,
+    ROTARY: 55,
+    "5111": 100,
   };
 
-  // ----------------------
-  // SERVICE DATA
-  // ----------------------
+  // ------------------------------------
+  // GLOBAL SERVICE STORAGE — FIXED
+  // ------------------------------------
   const [currentServices, setCurrentServices] = useState({
-    mowing: [],
-    edging: [],
-    bedMaintenance: [],
-    mulching: [],
-    pruning: [],
-    leaves: [],
+    mowing: [],            // MANY tables
+    edging: null,          // ONE edging table
+    bedMaintenance: null,  // ONE bed maintenance table
+    mulching: null,
+    pruning: null,
+    leaves: null,
   });
 
-  // ----------------------
-  // RATES — PRELOAD DEFAULTS (Fixes HOURS ISSUE)
-  // ----------------------
+  // ------------------------------------
+  // Mowing factors and dollar rates
+  // ------------------------------------
   const [currentRates, setCurrentRates] = useState({
     mowingFactors: DEFAULT_MOWING_FACTORS,
     mowingDollars: DEFAULT_MOWING_DOLLARS,
   });
 
-  // ----------------------
-  // UPDATE a specific service (ex: "mowing")
-  // ----------------------
+  // ------------------------------------
+  // UPDATE SERVICE — now safe
+  // ------------------------------------
   const updateService = (serviceName, data) => {
     setCurrentServices((prev) => ({
       ...prev,
@@ -82,16 +83,8 @@ export function ServiceProvider({ children }) {
     }));
   };
 
-  // ----------------------
-  // READ ALL SERVICES
-  // ----------------------
-  const getAllServices = () => {
-    return currentServices;
-  };
+  const getAllServices = () => currentServices;
 
-  // ----------------------
-  // UPDATE RATES
-  // ----------------------
   const updateRates = (key, value) => {
     setCurrentRates((prev) => ({
       ...prev,
@@ -99,17 +92,14 @@ export function ServiceProvider({ children }) {
     }));
   };
 
-  // ----------------------
-  // RESET SERVICES
-  // ----------------------
   const resetServices = () => {
     setCurrentServices({
       mowing: [],
-      edging: [],
-      bedMaintenance: [],
-      mulching: [],
-      pruning: [],
-      leaves: [],
+      edging: null,
+      bedMaintenance: null,
+      mulching: null,
+      pruning: null,
+      leaves: null,
     });
   };
 
@@ -130,9 +120,7 @@ export function ServiceProvider({ children }) {
 }
 
 export function useServiceContext() {
-  const context = useContext(ServiceContext);
-  if (!context) {
-    throw new Error("useServiceContext must be used within a ServiceProvider");
-  }
-  return context;
+  const ctx = useContext(ServiceContext);
+  if (!ctx) throw new Error("useServiceContext must be used within ServiceProvider");
+  return ctx;
 }

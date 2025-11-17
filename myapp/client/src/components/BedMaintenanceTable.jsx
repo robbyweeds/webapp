@@ -1,125 +1,89 @@
-// ===============================
-// BedMaintenanceTable.jsx — FIXED VERSION
-// ===============================
-import React, { useCallback, useMemo } from "react";
+// myapp/client/src/components/BedMaintenanceTable.jsx
+
+import React, { useMemo } from "react";
 import LabeledInput from "./LabeledInput";
 import { useServiceContext } from "../context/ServiceContext";
 
-// Default structure
-const INITIAL_BED_MAINTENANCE_DATA = {
+const INITIAL = {
   qtyUnit: { HAND: 0, BACKPACK: 0, ROUNDUP: 0 },
   unitPrice: { HAND: 55, BACKPACK: 55, ROUNDUP: 50 },
-  summary: {
-    adjPercent: 0,
-    numOccurrences: 1,
-  },
-  totals: {}, // <-- REQUIRED for Services preview
+  summary: { numOccurrences: 1 },
+
+  // Required by ServicesPage preview:
+  totalOccDollar: 0,
+  finalTotal: 0,
 };
 
-export default function BedMaintenanceTable({ tableId }) {
+export default function BedMaintenanceTable() {
+  const tableId = "BED";
+
   const { currentServices, updateService } = useServiceContext();
 
-  // Always keep exactly one BedMaintenance table
-  const serviceData = useMemo(() => {
-    const d = currentServices.bedMaintenance;
-    return Array.isArray(d) && d.length > 0 ? d : [{ id: tableId, data: {} }];
-  }, [currentServices.bedMaintenance, tableId]);
+  const array = Array.isArray(currentServices.bedMaintenance)
+    ? currentServices.bedMaintenance
+    : [];
 
-  const tableEntry =
-    serviceData.find((t) => t.id === tableId) || { id: tableId, data: {} };
+  const table =
+    array.find((t) => t.id === tableId) || { id: tableId, data: INITIAL };
 
   // Merge defaults + saved
-  const data = useMemo(
-    () => ({
-      ...INITIAL_BED_MAINTENANCE_DATA,
-      ...tableEntry.data,
+  const data = useMemo(() => {
+    return {
+      ...INITIAL,
+      ...table.data,
       qtyUnit: {
-        ...INITIAL_BED_MAINTENANCE_DATA.qtyUnit,
-        ...(tableEntry.data.qtyUnit || {}),
+        ...INITIAL.qtyUnit,
+        ...(table.data.qtyUnit || {}),
       },
       unitPrice: {
-        ...INITIAL_BED_MAINTENANCE_DATA.unitPrice,
-        ...(tableEntry.data.unitPrice || {}),
+        ...INITIAL.unitPrice,
+        ...(table.data.unitPrice || {}),
       },
       summary: {
-        ...INITIAL_BED_MAINTENANCE_DATA.summary,
-        ...(tableEntry.data.summary || {}),
+        ...INITIAL.summary,
+        ...(table.data.summary || {}),
       },
-      totals: {
-        ...(tableEntry.data.totals || {}),
-      },
-    }),
-    [tableEntry.data]
-  );
-
-  // ============================================================
-  // CALCULATE TOTALS
-  // ============================================================
-  function computeTotals(target) {
-    const qty = target.qtyUnit;
-    const prices = target.unitPrice;
-
-    const rowTotals = {};
-    let totalOccDollar = 0;
-
-    Object.keys(prices).forEach((key) => {
-      const subtotal = (qty[key] || 0) * (prices[key] || 0);
-      rowTotals[key] = subtotal;
-      totalOccDollar += subtotal;
-    });
-
-    const sumHours = Object.values(qty).reduce(
-      (sum, v) => sum + (parseFloat(v) || 0),
-      0
-    );
-
-    const numOcc = target.summary.numOccurrences || 1;
-    const finalTotal = totalOccDollar * numOcc;
-
-    return {
-      rowTotals,
-      totalOccDollar,
-      sumHours,
-      finalTotal,
     };
-  }
+  }, [table.data]);
 
-  const totals = computeTotals(data);
-
-  // ============================================================
-  // SAVE — with totals included
-  // ============================================================
-  const save = (updated) => {
-    const totals = computeTotals(updated);
-    updated = { ...updated, totals };
-
-    // Always save exactly ONE table
-    const newArray = [{ id: tableId, data: updated }];
-
-    updateService("bedMaintenance", newArray);
+  // -------------------------
+  // COMPUTED NUMBERS
+  // -------------------------
+  const totalRow = {
+    HAND: data.qtyUnit.HAND * data.unitPrice.HAND,
+    BACKPACK: data.qtyUnit.BACKPACK * data.unitPrice.BACKPACK,
+    ROUNDUP: data.qtyUnit.ROUNDUP * data.unitPrice.ROUNDUP,
   };
 
-  // ============================================================
-  // Unified change handler
-  // ============================================================
-  const handleRowChange = useCallback(
-    (rowKey, keyName) => (e) => {
-      const val =
-        e.target.type === "number" ? parseFloat(e.target.value) : e.target.value;
+  const sum = data.qtyUnit.HAND + data.qtyUnit.BACKPACK + data.qtyUnit.ROUNDUP;
 
-      const numeric = isNaN(val) ? 0 : val;
+  const totalOccDollar =
+    totalRow.HAND + totalRow.BACKPACK + totalRow.ROUNDUP;
 
-      const updatedRow = { ...data[rowKey], [keyName]: numeric };
-      const updatedData = { ...data, [rowKey]: updatedRow };
+  const finalTotal =
+    totalOccDollar * (data.summary.numOccurrences || 1);
 
-      save(updatedData);
-    },
-    [data]
-  );
+  // -------------------------
+  // SAVE one fixed table
+  // -------------------------
+  const save = (updatedData) => {
+    const full = {
+      ...updatedData,
+      totalOccDollar,
+      finalTotal,
+    };
 
-  // ============================================================
-  // RENDER
-  // ============================================================
+    updateService("bedMaintenance", [{ id: tableId, data: full }]);
+  };
+
+  const handleChange = (row, key) => (e) => {
+    const v = parseFloat(e.target.value) || 0;
+    save({
+      ...data,
+      [row]: { ...data[row], [key]: v },
+    });
+  };
+
   return (
     <table
       border="1"
@@ -127,7 +91,6 @@ export default function BedMaintenanceTable({ tableId }) {
         width: "100%",
         borderCollapse: "collapse",
         textAlign: "center",
-        marginBottom: "1rem",
       }}
     >
       <thead>
@@ -136,60 +99,56 @@ export default function BedMaintenanceTable({ tableId }) {
           <th>HAND</th>
           <th>BACKPACK</th>
           <th>ROUNDUP</th>
-
           <th># OCC</th>
-          <th style={{ backgroundColor: "yellow" }}>
+          <th style={{ background: "yellow" }}>
             <LabeledInput
               value={data.summary.numOccurrences}
-              onChange={handleRowChange("summary", "numOccurrences")}
-              step={1}
-              min={0}
               type="number"
-              label=""
+              min={0}
+              step={1}
+              onChange={handleChange("summary", "numOccurrences")}
             />
           </th>
         </tr>
       </thead>
 
       <tbody>
-        {/* QTY ROW */}
+        {/* QTY/UNIT */}
         <tr>
           <td>QTY/UNIT</td>
 
           <td>
             <LabeledInput
               value={data.qtyUnit.HAND}
-              onChange={handleRowChange("qtyUnit", "HAND")}
+              type="number"
               step={0.1}
               min={0}
-              label="HRS"
+              onChange={handleChange("qtyUnit", "HAND")}
             />
           </td>
 
           <td>
             <LabeledInput
               value={data.qtyUnit.BACKPACK}
-              onChange={handleRowChange("qtyUnit", "BACKPACK")}
-              step={0.1}
+              type="number"
               min={0}
-              label="QTY"
+              step={0.1}
+              onChange={handleChange("qtyUnit", "BACKPACK")}
             />
           </td>
 
           <td>
             <LabeledInput
               value={data.qtyUnit.ROUNDUP}
-              onChange={handleRowChange("qtyUnit", "ROUNDUP")}
-              step={0.1}
+              type="number"
               min={0}
-              label="QTY"
+              step={0.1}
+              onChange={handleChange("qtyUnit", "ROUNDUP")}
             />
           </td>
 
-          <td>TOT HRS</td>
-          <td style={{ backgroundColor: "#eef" }}>
-            {totals.sumHours.toFixed(2)}
-          </td>
+          <td>HRS/OCC</td>
+          <td style={{ background: "#eef" }}>{sum.toFixed(2)}</td>
         </tr>
 
         {/* UNIT PRICE */}
@@ -200,22 +159,19 @@ export default function BedMaintenanceTable({ tableId }) {
           <td>${data.unitPrice.ROUNDUP.toFixed(2)}</td>
 
           <td>$/OCC</td>
-          <td style={{ backgroundColor: "#eef" }}>
-            ${totals.totalOccDollar.toFixed(2)}
-          </td>
+          <td style={{ background: "#eef" }}>{totalOccDollar.toFixed(2)}</td>
         </tr>
 
         {/* TOTAL */}
-        <tr style={{ backgroundColor: "#f2f2f2", fontWeight: "bold" }}>
+        <tr style={{ fontWeight: "bold", background: "#f4f4f4" }}>
           <td>TOTAL</td>
-
-          <td>${totals.rowTotals.HAND.toFixed(2)}</td>
-          <td>${totals.rowTotals.BACKPACK.toFixed(2)}</td>
-          <td>${totals.rowTotals.ROUNDUP.toFixed(2)}</td>
+          <td>${totalRow.HAND.toFixed(2)}</td>
+          <td>${totalRow.BACKPACK.toFixed(2)}</td>
+          <td>${totalRow.ROUNDUP.toFixed(2)}</td>
 
           <td>TOTAL $</td>
           <td style={{ background: "yellow" }}>
-            ${totals.finalTotal.toFixed(2)}
+            {finalTotal.toFixed(2)}
           </td>
         </tr>
       </tbody>
