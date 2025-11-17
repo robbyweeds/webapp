@@ -8,6 +8,8 @@ import MowingForm from "./components/MowingForm";
 import MulchingForm from "./components/MulchingForm";
 import PruningForm from "./components/PruningForm";
 import LeavesForm from "./components/LeavesForm";
+import MowingRatesPage from "./components/MowingRatesPage";
+
 
 // Context
 import { ServiceProvider } from "./context/ServiceContext";
@@ -23,6 +25,8 @@ function App() {
           <Route path="/services/mulching" element={<MulchingForm />} />
           <Route path="/services/pruning" element={<PruningForm />} />
           <Route path="/services/leaves" element={<LeavesForm />} />
+          <Route path="/mowing-rates" element={<MowingRatesPage />} />
+
         </Routes>
       </Router>
     </ServiceProvider>

@@ -73,6 +73,20 @@ export default function MowingForm() {
         >
           Save Mowing Data
         </button>
+        <button
+          onClick={() => navigate("/mowing-rates")}
+          style={{
+            padding: "10px 20px",
+            backgroundColor: "#6c757d",
+            color: "white",
+            border: "none",
+            borderRadius: "5px",
+            cursor: "pointer"
+            }}
+            >
+          Edit Mowing Rates
+        </button>
+
       </div>
 
       <div style={{ marginTop: "2rem" }}>
