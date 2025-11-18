@@ -1,10 +1,11 @@
 // =====================================
-// MowingTable.jsx — CLEAN + STABLE VERSION
+// MowingTable.jsx — CLEAN + ALIGNED VERSION
 // =====================================
 import React, { useMemo } from "react";
 import LabeledInput from "../LabeledInput";
 import { useServiceContext } from "../../context/ServiceContext";
 
+// Shared logic + constants
 import {
   INITIAL_MOWING_DATA,
   EFFICIENCY_OPTIONS,
@@ -22,6 +23,7 @@ export default function MowingTable({ tableId }) {
   const mowingDollars = currentRates?.mowingDollars || {};
   const acresPerHour = currentRates?.mowingFactors?.acresPerHour || {};
 
+  // Load mowing list
   const mowingList = Array.isArray(currentServices.mowing)
     ? currentServices.mowing
     : [];
@@ -29,9 +31,9 @@ export default function MowingTable({ tableId }) {
   const tableEntry =
     mowingList.find((t) => t.id === tableId) || { id: tableId, data: {} };
 
-  // ----------------------------------------------------
-  // MERGE SAVED + DEFAULT DATA
-  // ----------------------------------------------------
+  // --------------------------------------
+  // MERGE DEFAULT DATA + SAVED DATA
+  // --------------------------------------
   const data = useMemo(() => {
     return {
       ...INITIAL_MOWING_DATA,
@@ -66,25 +68,24 @@ export default function MowingTable({ tableId }) {
     };
   }, [tableEntry.data]);
 
-  // ----------------------------------------------------
-  // COMPUTE HOURS + TOTALS (NO AUTOSAVE)
-  // ----------------------------------------------------
+  // --------------------------------------
+  // COMPUTE HOURS + TOTALS
+  // --------------------------------------
   const computedQtyUnit = computeHours(data, acresPerHour);
   const totals = computeTotals(data, computedQtyUnit, mowingDollars);
 
-  // ----------------------------------------------------
-  // SAVE HELPERS
-  // ----------------------------------------------------
+  // --------------------------------------
+  // SAVE
+  // --------------------------------------
   const save = (updated) => {
     saveMowing(tableId, updated, mowingList, updateService, totals);
   };
 
-  // ----------------------------------------------------
-  // INPUT HANDLERS
-  // ----------------------------------------------------
-  const handleNameChange = (e) => {
+  // --------------------------------------
+  // HANDLERS
+  // --------------------------------------
+  const handleNameChange = (e) =>
     save({ ...data, name: e.target.value });
-  };
 
   const handleAcresChange = (key) => (e) => {
     const v = parseFloat(e.target.value) || 0;
@@ -112,8 +113,7 @@ export default function MowingTable({ tableId }) {
   };
 
   const handleManualOverride = (key) => (e) => {
-    const raw = e.target.value;
-
+    let raw = e.target.value;
     if (raw === "") {
       save({
         ...data,
@@ -126,36 +126,29 @@ export default function MowingTable({ tableId }) {
     if (isNaN(num)) num = 0;
 
     const snapped = Math.round(num * 4) / 4;
+    const finalValue = Number(snapped.toFixed(2));
+
     save({
       ...data,
-      manualOverrides: {
-        ...data.manualOverrides,
-        [key]: Number(snapped.toFixed(2)),
-      },
+      manualOverrides: { ...data.manualOverrides, [key]: finalValue },
     });
   };
 
   const handleQtyChange = (key) => (e) => {
-    let raw = e.target.value;
-    if (raw === "") raw = "0";
-
-    let num = parseFloat(raw);
+    let num = parseFloat(e.target.value);
     if (isNaN(num)) num = 0;
-
     const snapped = Math.round(num * 4) / 4;
+    const finalValue = Number(snapped.toFixed(2));
 
     save({
       ...data,
-      qtyUnit: {
-        ...data.qtyUnit,
-        [key]: Number(snapped.toFixed(2)),
-      },
+      qtyUnit: { ...data.qtyUnit, [key]: finalValue },
     });
   };
 
-  // ----------------------------------------------------
-  // RENDER UI
-  // ----------------------------------------------------
+  // --------------------------------------
+  // RENDER
+  // --------------------------------------
   return (
     <div
       style={{
@@ -164,8 +157,14 @@ export default function MowingTable({ tableId }) {
         padding: "1rem",
       }}
     >
-      {/* NAME INPUT */}
-      <div style={{ marginBottom: "1rem", display: "flex", alignItems: "center" }}>
+      {/* NAME ROW */}
+      <div
+        style={{
+          marginBottom: "1rem",
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
         <h3 style={{ marginRight: "1rem" }}>Mowing Area Name:</h3>
         <input
           type="text"
@@ -175,7 +174,6 @@ export default function MowingTable({ tableId }) {
         />
       </div>
 
-      {/* MAIN TABLE */}
       <table
         border="1"
         style={{
@@ -189,9 +187,9 @@ export default function MowingTable({ tableId }) {
             <th rowSpan="2">ITEM</th>
             <th rowSpan="2">MISC</th>
 
-            <th colSpan="2">72&quot; Area</th>
-            <th colSpan="2">60&quot; Area</th>
-            <th colSpan="2">48&quot; Area</th>
+            <th colSpan="2">72&quot; area</th>
+            <th colSpan="2">60&quot; area</th>
+            <th colSpan="2">48&quot; area</th>
 
             <th colSpan="3">LABOR</th>
 
@@ -223,9 +221,9 @@ export default function MowingTable({ tableId }) {
         </thead>
 
         <tbody>
-          {/* EFFICIENCY */}
+          {/* EFFICIENCY ROW */}
           <tr style={{ background: "#e9f7ef", fontWeight: "bold" }}>
-            <td>EFF</td>
+            <td>EFFICIENCY</td>
             <td style={{ background: "#ccc" }}></td>
 
             {DECK_KEYS.map((key) => (
@@ -233,6 +231,7 @@ export default function MowingTable({ tableId }) {
                 <select
                   value={data.selectedEfficiency[key]}
                   onChange={handleEfficiencyChange(key)}
+                  style={{ width: "100%", padding: "5px" }}
                 >
                   {EFFICIENCY_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>
@@ -248,6 +247,7 @@ export default function MowingTable({ tableId }) {
                 <select
                   value={data.selectedEfficiency[key]}
                   onChange={handleEfficiencyChange(key)}
+                  style={{ width: "100%", padding: "5px" }}
                 >
                   {SMPWR_EFFICIENCY_OPTIONS.map((opt) => (
                     <option key={opt} value={opt}>
@@ -258,14 +258,18 @@ export default function MowingTable({ tableId }) {
               </td>
             ))}
 
+            {/* ROTARY (no efficiency) */}
             <td style={{ background: "#ccc" }}></td>
+            {/* 5111 (no efficiency) */}
+            <td style={{ background: "#ccc" }}></td>
+
             <td>HRS/OCC:</td>
             <td style={{ background: "#eef" }}>
               {totals.totalHours.toFixed(2)}
             </td>
           </tr>
 
-          {/* ACRES */}
+          {/* ACRES ROW */}
           <tr>
             <td>ACRES</td>
             <td style={{ background: "#ccc" }}></td>
@@ -283,8 +287,12 @@ export default function MowingTable({ tableId }) {
               </td>
             ))}
 
+            {/* TRIMMER/BLOWER/ROTARY unused for ACRES */}
             <td style={{ background: "#ccc" }}></td>
             <td style={{ background: "#ccc" }}></td>
+            <td style={{ background: "#ccc" }}></td>
+
+            {/* 5111 column blank */}
             <td style={{ background: "#ccc" }}></td>
 
             <td>ACRES:</td>
@@ -293,11 +301,10 @@ export default function MowingTable({ tableId }) {
             </td>
           </tr>
 
-          {/* QUANTITY/HOURS */}
+          {/* QTY/UNIT ROW */}
           <tr>
             <td>QTY/UNIT</td>
 
-            {/* MISC */}
             <td style={{ background: "#b3d9ff" }}>
               <LabeledInput
                 value={data.qtyUnit.MISC_HRS.toFixed(2)}
@@ -305,23 +312,25 @@ export default function MowingTable({ tableId }) {
                 step={0.25}
                 min={0}
                 type="number"
+                label="HRS"
               />
             </td>
 
-            {/* DECK KEYS */}
             {DECK_KEYS.map((key) => (
               <td key={key} style={{ background: "#b3d9ff" }}>
                 <LabeledInput
-                  value={(data.manualOverrides[key] ?? computedQtyUnit[key]).toFixed(2)}
+                  value={(
+                    data.manualOverrides[key] ?? computedQtyUnit[key]
+                  ).toFixed(2)}
                   onChange={handleManualOverride(key)}
                   step={0.25}
                   min={0}
                   type="number"
+                  label=""
                 />
               </td>
             ))}
 
-            {/* LABOR KEYS */}
             <td style={{ background: "#b3d9ff" }}>
               <LabeledInput
                 value={data.qtyUnit.TRIMMER.toFixed(2)}
@@ -329,6 +338,7 @@ export default function MowingTable({ tableId }) {
                 step={0.25}
                 min={0}
                 type="number"
+                label="HRS"
               />
             </td>
 
@@ -339,6 +349,7 @@ export default function MowingTable({ tableId }) {
                 step={0.25}
                 min={0}
                 type="number"
+                label="HRS"
               />
             </td>
 
@@ -349,6 +360,7 @@ export default function MowingTable({ tableId }) {
                 step={0.25}
                 min={0}
                 type="number"
+                label="HRS"
               />
             </td>
 
@@ -359,6 +371,7 @@ export default function MowingTable({ tableId }) {
                 step={0.25}
                 min={0}
                 type="number"
+                label="HRS"
               />
             </td>
 
@@ -368,14 +381,16 @@ export default function MowingTable({ tableId }) {
             </td>
           </tr>
 
-          {/* UNIT PRICE */}
+          {/* UNIT $ ROW */}
           <tr>
             <td>UNIT $</td>
 
             <td>${(mowingDollars.MISC_HRS || 0).toFixed(2)}</td>
 
             {DECK_KEYS.map((key) => (
-              <td key={key}>${Number(mowingDollars[key] || 0).toFixed(2)}</td>
+              <td key={key}>
+                ${Number(mowingDollars[key] || 0).toFixed(2)}
+              </td>
             ))}
 
             <td>${Number(mowingDollars.TRIMMER || 0).toFixed(2)}</td>
@@ -399,14 +414,16 @@ export default function MowingTable({ tableId }) {
             </td>
           </tr>
 
-          {/* TOTAL */}
+          {/* TOTAL ROW */}
           <tr style={{ background: "#f2f2f2", fontWeight: "bold" }}>
             <td>TOTAL</td>
 
             <td>${Number(totals.rowTotals.MISC_HRS || 0).toFixed(2)}</td>
 
             {DECK_KEYS.map((key) => (
-              <td key={key}>${Number(totals.rowTotals[key] || 0).toFixed(2)}</td>
+              <td key={key}>
+                ${Number(totals.rowTotals[key] || 0).toFixed(2)}
+              </td>
             ))}
 
             <td>${Number(totals.rowTotals.TRIMMER || 0).toFixed(2)}</td>
