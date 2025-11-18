@@ -1,3 +1,4 @@
+// myapp/client/src/components/ServicesPage.jsx
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useServiceContext } from "../context/ServiceContext";
@@ -16,25 +17,25 @@ export default function ServicesPage() {
     acres: "",
   });
 
-  // -----------------------------------------------------
-  // Load project info from localStorage
-  // -----------------------------------------------------
+  // ---------------------------------------------
+  // Load project from localStorage
+  // ---------------------------------------------
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("project"));
     if (stored) setProject(stored);
   }, []);
 
-  // -----------------------------------------------------
-  // DELETE a MOWING table
-  // -----------------------------------------------------
+  // ---------------------------------------------
+  // DELETE A MOWING ENTRY
+  // ---------------------------------------------
   const deleteMowing = (id) => {
     const updated = currentServices.mowing.filter((m) => m.id !== id);
     updateService("mowing", updated);
   };
 
-  // -----------------------------------------------------
+  // ---------------------------------------------
   // SAVE PROJECT TO BACKEND
-  // -----------------------------------------------------
+  // ---------------------------------------------
   const handleSaveProject = async () => {
     const services = getAllServices() || {};
 
@@ -52,7 +53,10 @@ export default function ServicesPage() {
       const response = await fetch(`${API_URL}/project`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project, services: sanitized }),
+        body: JSON.stringify({
+          project,
+          services: sanitized,
+        }),
       });
 
       const data = await response.json();
@@ -69,33 +73,45 @@ export default function ServicesPage() {
     }
   };
 
-  // -----------------------------------------------------
-  // RENDER
-  // -----------------------------------------------------
+  // ---------------------------------------------
+  // RENDER PAGE
+  // ---------------------------------------------
   return (
     <div style={{ padding: "2rem", maxWidth: "900px", margin: "auto" }}>
       <h2>Services for {project.projectName || "New Project"}</h2>
 
-      {/* -------------------------------------------------
+      {/* ---------------------------------------------
           ADD SERVICE BUTTONS
-      -------------------------------------------------- */}
+      ---------------------------------------------- */}
       <section style={{ marginBottom: "2rem" }}>
         <h3>Add Services</h3>
+
         <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-          <button onClick={() => navigate("/services/mowing")}>Add Mowing</button>
-          <button onClick={() => navigate("/services/mulching")}>Add Mulching</button>
-          <button onClick={() => navigate("/services/pruning")}>Add Pruning</button>
-          <button onClick={() => navigate("/services/leaves")}>Add Leaves</button>
+          <button onClick={() => navigate("/services/mowing")}>
+            Add Mowing
+          </button>
+          <button onClick={() => navigate("/services/mulching")}>
+            Add Mulching
+          </button>
+          <button onClick={() => navigate("/services/pruning")}>
+            Add Pruning
+          </button>
+          <button onClick={() => navigate("/services/leaves")}>
+            Add Leaves
+          </button>
         </div>
       </section>
 
-      <button onClick={handleSaveProject} style={{ marginBottom: "2rem" }}>
+      <button
+        onClick={handleSaveProject}
+        style={{ marginBottom: "2rem" }}
+      >
         Save Project
       </button>
 
-      {/* -------------------------------------------------
+      {/* ---------------------------------------------
           PROJECT SUMMARY
-      -------------------------------------------------- */}
+      ---------------------------------------------- */}
       <div
         style={{
           marginTop: "1rem",
@@ -105,13 +121,20 @@ export default function ServicesPage() {
       >
         <h3>Current Project Summary</h3>
 
-        <p><strong>Project Name:</strong> {project.projectName || "(none)"}</p>
-        <p><strong>Date:</strong> {project.date || "(none)"}</p>
-        <p><strong>Acres:</strong> {project.acres || "(none)"}</p>
+        <p>
+          <strong>Project Name:</strong>{" "}
+          {project.projectName || "(none)"}
+        </p>
+        <p>
+          <strong>Date:</strong> {project.date || "(none)"}
+        </p>
+        <p>
+          <strong>Acres:</strong> {project.acres || "(none)"}
+        </p>
 
-        {/* -------------------------------------------------
+        {/* ---------------------------------------------
             MOWING PREVIEW
-        -------------------------------------------------- */}
+        ---------------------------------------------- */}
         {currentServices.mowing?.length > 0 && (
           <div style={{ marginTop: "1.5rem" }}>
             <h3>Mowing</h3>
@@ -128,7 +151,7 @@ export default function ServicesPage() {
                   position: "relative",
                 }}
               >
-                {/* DELETE BUTTON */}
+                {/* Delete Button */}
                 <button
                   onClick={() => deleteMowing(t.id)}
                   style={{
@@ -147,25 +170,37 @@ export default function ServicesPage() {
                   X
                 </button>
 
-                <div><strong>{t.data.name}</strong></div>
-
-                <div>Occurrences: {t.data.summary?.numOccurrences ?? 0}</div>
-
+                {/* Mowing Data */}
                 <div>
-                  Price / Occ: ${Number(t.data.totals?.adjDollar ?? 0).toFixed(2)}
+                  <strong>{t.data.name || "Mowing Area"}</strong>
                 </div>
 
                 <div>
-                  Total Price: ${Number(t.data.totals?.final ?? 0).toFixed(2)}
+                  Occurrences: {t.data.summary?.numOccurrences ?? 0}
+                </div>
+
+                <div>
+                  Base Price / Occ: $
+                  {(t.data.totals?.totalOcc ?? 0).toFixed(2)}
+                </div>
+
+                <div>
+                  Adj Price / Occ: $
+                  {(t.data.totals?.adjDollar ?? 0).toFixed(2)}
+                </div>
+
+                <div>
+                  Total Price: $
+                  {(t.data.totals?.final ?? 0).toFixed(2)}
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* -------------------------------------------------
-            EDGING + BED MAINTENANCE PREVIEW
-        -------------------------------------------------- */}
+        {/* ---------------------------------------------
+            EDGING & BED MAINTENANCE PREVIEW
+        ---------------------------------------------- */}
         {(currentServices.edging?.length > 0 ||
           currentServices.bedMaintenance?.length > 0) && (
           <div style={{ marginTop: "2rem" }}>
@@ -179,44 +214,29 @@ export default function ServicesPage() {
                 background: "#f5f5f5",
               }}
             >
-              {/* -------- EDGING -------- */}
+              {/* Edging */}
               {currentServices.edging?.[0] && (() => {
                 const e = currentServices.edging[0].data;
-
-                const totalOcc =
-                  (e.qtyUnit?.EDGER || 0) * (e.unitPrice?.EDGER || 0) +
-                  (e.qtyUnit?.BLOWER || 0) * (e.unitPrice?.BLOWER || 0);
-
-                const final = totalOcc * (e.summary?.numOccurrences || 0);
-
                 return (
                   <>
                     <div><strong>Edging</strong></div>
                     <div>Occurrences: {e.summary?.numOccurrences ?? 0}</div>
-                    <div>Price / Occ: ${totalOcc.toFixed(2)}</div>
-                    <div>Total Price: ${final.toFixed(2)}</div>
+                    <div>Price / Occ: ${(e.totalOccDollar ?? 0).toFixed(2)}</div>
+                    <div>Total Price: ${(e.finalTotal ?? 0).toFixed(2)}</div>
                     <hr />
                   </>
                 );
               })()}
 
-              {/* -------- BED MAINTENANCE -------- */}
+              {/* Bed Maintenance */}
               {currentServices.bedMaintenance?.[0] && (() => {
                 const b = currentServices.bedMaintenance[0].data;
-
-                const occ =
-                  (b.qtyUnit?.HAND || 0) * (b.unitPrice?.HAND || 0) +
-                  (b.qtyUnit?.BACKPACK || 0) * (b.unitPrice?.BACKPACK || 0) +
-                  (b.qtyUnit?.ROUNDUP || 0) * (b.unitPrice?.ROUNDUP || 0);
-
-                const final = occ * (b.summary?.numOccurrences || 0);
-
                 return (
                   <>
                     <div><strong>Bed Maintenance</strong></div>
                     <div>Occurrences: {b.summary?.numOccurrences ?? 0}</div>
-                    <div>Price / Occ: ${occ.toFixed(2)}</div>
-                    <div>Total Price: ${final.toFixed(2)}</div>
+                    <div>Price / Occ: ${(b.occDollar ?? 0).toFixed(2)}</div>
+                    <div>Total Price: ${(b.finalTotal ?? 0).toFixed(2)}</div>
                   </>
                 );
               })()}
