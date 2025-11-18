@@ -1,12 +1,16 @@
+// =====================================
+// ServiceContext.jsx — FINAL FIXED VERSION
+// =====================================
+
 import React, { createContext, useContext, useState } from "react";
 
 const ServiceContext = createContext(null);
 
 export function ServiceProvider({ children }) {
 
-  // ----------------------
-  // DEFAULT MOWING RATES
-  // ----------------------
+  // ----------------------------------------
+  // MOWING FACTORS (ALL DEFAULTS)
+  // ----------------------------------------
   const DEFAULT_MOWING_FACTORS = {
     acresPerHour: {
       "72": {
@@ -37,8 +41,33 @@ export function ServiceProvider({ children }) {
         DOUBLE_CUT: 0.45,
       },
     },
+
+    smPwrEfficiency: {
+      TRIMMER: {
+        MINIMUM: 0.75,
+        LESS: 0.85,
+        AVERAGE: 0.95,
+        HOA_HOMES: 1.05,
+        HIGH_END_DETAILING: 1.35,
+      },
+      BLOWER: {
+        MINIMUM: 0.2,
+        LESS: 0.3,
+        AVERAGE: 0.35,
+        HOA_HOMES: 0.45,
+        HIGH_END_DETAILING: 0.55,
+      },
+    },
+
+    smPwrAllocation: {
+      TRIMMER: { "72": 0.1, "60": 0.2, "48": 0.75 },
+      BLOWER: { "72": 0.1, "60": 0.2, "48": 0.75 },
+    },
   };
 
+  // ----------------------------------------
+  // DOLLAR RATES
+  // ----------------------------------------
   const DEFAULT_MOWING_DOLLARS = {
     MISC_HRS: 61,
     "72-area1": 51,
@@ -53,29 +82,29 @@ export function ServiceProvider({ children }) {
     "5111": 100,
   };
 
-  // ------------------------------------
-  // GLOBAL SERVICE STORAGE — FIXED
-  // ------------------------------------
+  // ----------------------------------------
+  // GLOBAL SERVICES STORAGE
+  // ----------------------------------------
   const [currentServices, setCurrentServices] = useState({
-    mowing: [],            // MANY tables
-    edging: null,          // ONE edging table
-    bedMaintenance: null,  // ONE bed maintenance table
+    mowing: [],             // multiple mowing tables
+    edging: null,           // single table
+    bedMaintenance: null,   // single table
     mulching: null,
     pruning: null,
     leaves: null,
   });
 
-  // ------------------------------------
-  // Mowing factors and dollar rates
-  // ------------------------------------
+  // ----------------------------------------
+  // RATE STORAGE
+  // ----------------------------------------
   const [currentRates, setCurrentRates] = useState({
     mowingFactors: DEFAULT_MOWING_FACTORS,
     mowingDollars: DEFAULT_MOWING_DOLLARS,
   });
 
-  // ------------------------------------
-  // UPDATE SERVICE — now safe
-  // ------------------------------------
+  // ----------------------------------------
+  // SERVICE UPDATE
+  // ----------------------------------------
   const updateService = (serviceName, data) => {
     setCurrentServices((prev) => ({
       ...prev,
@@ -85,6 +114,9 @@ export function ServiceProvider({ children }) {
 
   const getAllServices = () => currentServices;
 
+  // ----------------------------------------
+  // RATE UPDATE
+  // ----------------------------------------
   const updateRates = (key, value) => {
     setCurrentRates((prev) => ({
       ...prev,
@@ -92,6 +124,9 @@ export function ServiceProvider({ children }) {
     }));
   };
 
+  // ----------------------------------------
+  // RESET ALL SERVICES
+  // ----------------------------------------
   const resetServices = () => {
     setCurrentServices({
       mowing: [],
@@ -121,6 +156,8 @@ export function ServiceProvider({ children }) {
 
 export function useServiceContext() {
   const ctx = useContext(ServiceContext);
-  if (!ctx) throw new Error("useServiceContext must be used within ServiceProvider");
+  if (!ctx) {
+    throw new Error("useServiceContext must be used within a ServiceProvider");
+  }
   return ctx;
 }
