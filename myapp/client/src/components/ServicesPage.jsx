@@ -3,7 +3,6 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useServiceContext } from "../context/ServiceContext";
 
-// Mowing logic
 import {
   INITIAL_MOWING_DATA,
 } from "./Mowing/mowingDefaults";
@@ -23,25 +22,19 @@ export default function ServicesPage() {
     acres: "",
   });
 
-  // ----------------------------------------
   // Load project info
-  // ----------------------------------------
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("project"));
     if (stored) setProject(stored);
   }, []);
 
-  // ----------------------------------------
   // DELETE MOWING ENTRY
-  // ----------------------------------------
   const deleteMowing = (id) => {
     const updated = currentServices.mowing.filter((m) => m.id !== id);
     updateService("mowing", updated);
   };
 
-  // ----------------------------------------
   // MOWING PREVIEW COMPUTATION
-  // ----------------------------------------
   const acresPerHour = currentRates?.mowingFactors?.acresPerHour || {};
   const mowingDollars = currentRates?.mowingDollars || {};
 
@@ -73,9 +66,7 @@ export default function ServicesPage() {
     return { merged, totals };
   };
 
-  // ----------------------------------------
-  // EDGING PREVIEW COMPUTATION
-  // ----------------------------------------
+  // EDGING PREVIEW
   const computeEdgingTotals = (entry) => {
     const d = entry.data || {};
 
@@ -94,9 +85,7 @@ export default function ServicesPage() {
     return { qty, price, occ, totalOccDollar, finalTotal };
   };
 
-  // ----------------------------------------
-  // BED MAINTENANCE PREVIEW COMPUTATION
-  // ----------------------------------------
+  // BED MAINT PREVIEW
   const computeBedTotals = (entry) => {
     const d = entry.data || {};
 
@@ -104,23 +93,17 @@ export default function ServicesPage() {
     const price = d.unitPrice || { HAND: 0, BACKPACK: 0, ROUNDUP: 0 };
     const occ = d.summary?.numOccurrences || 0;
 
-    const totalRow = {
-      HAND: qty.HAND * price.HAND,
-      BACKPACK: qty.BACKPACK * price.BACKPACK,
-      ROUNDUP: qty.ROUNDUP * price.ROUNDUP,
-    };
-
     const occDollar =
-      totalRow.HAND + totalRow.BACKPACK + totalRow.ROUNDUP;
+      qty.HAND * price.HAND +
+      qty.BACKPACK * price.BACKPACK +
+      qty.ROUNDUP * price.ROUNDUP;
 
     const finalTotal = occDollar * occ;
 
     return { qty, price, occ, occDollar, finalTotal };
   };
 
-  // ----------------------------------------
   // SAVE PROJECT
-  // ----------------------------------------
   const handleSaveProject = async () => {
     const services = getAllServices() || {};
 
@@ -155,14 +138,11 @@ export default function ServicesPage() {
     }
   };
 
-  // ----------------------------------------
   // RENDER
-  // ----------------------------------------
   return (
     <div style={{ padding: "2rem", maxWidth: "900px", margin: "auto" }}>
       <h2>Services for {project.projectName || "New Project"}</h2>
 
-      {/* ADD SERVICES */}
       <section style={{ marginBottom: "2rem" }}>
         <h3>Add Services</h3>
 
@@ -178,7 +158,6 @@ export default function ServicesPage() {
         Save Project
       </button>
 
-      {/* SUMMARY */}
       <div style={{ marginTop: "1rem", padding: "1rem", borderTop: "1px solid #ccc" }}>
         <h3>Current Project Summary</h3>
 
@@ -186,100 +165,104 @@ export default function ServicesPage() {
         <p><strong>Date:</strong> {project.date}</p>
         <p><strong>Acres:</strong> {project.acres}</p>
 
-        {/* MOWING PREVIEW */}
-        {currentServices.mowing?.length > 0 && (
-          <div style={{ marginTop: "1.5rem" }}>
-            <h3>Mowing</h3>
-
-            {currentServices.mowing.map((t) => {
-              const { merged, totals } = computeMowingPreview(t);
-
-              return (
-                <div
-                  key={t.id}
-                  style={{
-                    border: "1px solid #aaa",
-                    borderRadius: "6px",
-                    padding: "12px",
-                    marginBottom: "10px",
-                    background: "#fafafa",
-                    position: "relative",
-                  }}
-                >
-                  <button
-                    onClick={() => deleteMowing(t.id)}
-                    style={{
-                      position: "absolute",
-                      top: "10px",
-                      right: "10px",
-                      background: "#dc3545",
-                      color: "white",
-                      border: "none",
-                      padding: "6px 10px",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    X
-                  </button>
-
-                  <div><strong>{merged.name || "Mowing Area"}</strong></div>
-                  <div>Occurrences: {merged.summary.numOccurrences}</div>
-                  <div>Base Price / Occ: ${totals.totalOcc.toFixed(2)}</div>
-                  <div>Adj Price / Occ: ${totals.adjDollar.toFixed(2)}</div>
-                  <div>Total Price: ${totals.final.toFixed(2)}</div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* EDGING + BED MAINTENANCE */}
-        {(currentServices.edging?.length > 0 ||
+        {/* UNIFIED TABLE */}
+        {(currentServices.mowing?.length > 0 ||
+          currentServices.edging?.length > 0 ||
           currentServices.bedMaintenance?.length > 0) && (
           <div style={{ marginTop: "2rem" }}>
-            <h3>Edging & Bed Maintenance</h3>
+            <h3>Service Summary</h3>
 
-            <div
+            <table
               style={{
-                border: "1px solid #aaa",
-                borderRadius: "6px",
-                padding: "12px",
-                background: "#f5f5f5",
+                width: "100%",
+                borderCollapse: "collapse",
+                background: "#fafafa",
               }}
             >
-              {/* Edging */}
-              {currentServices.edging?.[0] && (() => {
-                const e = currentServices.edging[0];
-                const calc = computeEdgingTotals(e);
+              <thead>
+                <tr>
+                  <th style={{ borderBottom: "1px solid #ccc", textAlign: "left" }}>Service</th>
+                  <th style={{ borderBottom: "1px solid #ccc" }}>Occurrences</th>
+                  <th style={{ borderBottom: "1px solid #ccc" }}>Price / Occ</th>
+                  <th style={{ borderBottom: "1px solid #ccc" }}>Total</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {/* MOWING ROWS */}
+                {currentServices.mowing?.map((t) => {
+                  const { merged, totals } = computeMowingPreview(t);
 
-                return (
-                  <>
-                    <div><strong>Edging</strong></div>
-                    <div>Occurrences: {calc.occ}</div>
-                    <div>Price / Occ: ${calc.totalOccDollar.toFixed(2)}</div>
-                    <div>Total Price: ${calc.finalTotal.toFixed(2)}</div>
-                    <hr />
-                  </>
-                );
-              })()}
+                  return (
+                    <tr key={t.id}>
+                      <td>{merged.name || "Mowing Area"}</td>
+                      <td style={{ textAlign: "center" }}>{merged.summary.numOccurrences}</td>
+                      <td style={{ textAlign: "center" }}>
+                        ${totals.adjDollar.toFixed(2)}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        ${totals.final.toFixed(2)}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        <button
+                          onClick={() => deleteMowing(t.id)}
+                          style={{
+                            background: "#dc3545",
+                            color: "white",
+                            border: "none",
+                            padding: "4px 8px",
+                            borderRadius: "4px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          X
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
 
-              {/* Bed Maintenance */}
-              {currentServices.bedMaintenance?.[0] && (() => {
-                const b = currentServices.bedMaintenance[0];
-                const calc = computeBedTotals(b);
+                {/* EDGING */}
+                {currentServices.edging?.[0] && (() => {
+                  const e = currentServices.edging[0];
+                  const calc = computeEdgingTotals(e);
 
-                return (
-                  <>
-                    <div><strong>Bed Maintenance</strong></div>
-                    <div>Occurrences: {calc.occ}</div>
-                    <div>Price / Occ: ${calc.occDollar.toFixed(2)}</div>
-                    <div>Total Price: ${calc.finalTotal.toFixed(2)}</div>
-                  </>
-                );
-              })()}
-            </div>
+                  return (
+                    <tr>
+                      <td>Edging</td>
+                      <td style={{ textAlign: "center" }}>{calc.occ}</td>
+                      <td style={{ textAlign: "center" }}>
+                        ${calc.totalOccDollar.toFixed(2)}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        ${calc.finalTotal.toFixed(2)}
+                      </td>
+                      <td></td>
+                    </tr>
+                  );
+                })()}
+
+                {/* BED MAINT */}
+                {currentServices.bedMaintenance?.[0] && (() => {
+                  const b = currentServices.bedMaintenance[0];
+                  const calc = computeBedTotals(b);
+
+                  return (
+                    <tr>
+                      <td>Bed Maintenance</td>
+                      <td style={{ textAlign: "center" }}>{calc.occ}</td>
+                      <td style={{ textAlign: "center" }}>
+                        ${calc.occDollar.toFixed(2)}
+                      </td>
+                      <td style={{ textAlign: "center" }}>
+                        ${calc.finalTotal.toFixed(2)}
+                      </td>
+                      <td></td>
+                    </tr>
+                  );
+                })()}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
