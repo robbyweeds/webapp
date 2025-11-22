@@ -2,154 +2,14 @@
 
 import React from "react";
 import { useServiceContext } from "../../context/ServiceContext";
+import { DEFAULT_MULCHING_RATES } from "./mulchingDefaults";
 import {
-  INITIAL_MULCHING_DATA,
-  DEFAULT_MULCHING_RATES,
-} from "./mulchingDefaults";
-
-// Merge raw entry data with our initial shape
-function mergeMulchingData(raw) {
-  const base = raw || {};
-
-  // Augment INITIAL_MULCHING_DATA with our extra SmPwr/Loader keys
-  const BASE_INITIAL = {
-    ...INITIAL_MULCHING_DATA,
-    smPwrCommon: {
-      selection: "Average",
-      hoursOverride: null,
-      ...(INITIAL_MULCHING_DATA.smPwrCommon || {}),
-    },
-    loaderCommon: {
-      selection: "Average",
-      hoursOverride: null,
-      ...(INITIAL_MULCHING_DATA.loaderCommon || {}),
-    },
-    smPwrHomes: {
-      selection: "Average",
-      hoursOverride: null,
-      ...(INITIAL_MULCHING_DATA.smPwrHomes || {}),
-    },
-    loaderHomes: {
-      selection: "Average",
-      hoursOverride: null,
-      ...(INITIAL_MULCHING_DATA.loaderHomes || {}),
-    },
-  };
-
-  const rawCommon = base.handCommonAreas || {};
-  const rawHomes = base.handHomes || {};
-
-  return {
-    ...BASE_INITIAL,
-    ...base,
-    summary: {
-      ...BASE_INITIAL.summary,
-      ...(base.summary || {}),
-    },
-    handCommonAreas: {
-      ...BASE_INITIAL.handCommonAreas,
-      ...rawCommon,
-      area1: {
-        ...BASE_INITIAL.handCommonAreas.area1,
-        ...(rawCommon.area1 || {}),
-      },
-      area2: {
-        ...BASE_INITIAL.handCommonAreas.area2,
-        ...(rawCommon.area2 || {}),
-      },
-      area3: {
-        ...BASE_INITIAL.handCommonAreas.area3,
-        ...(rawCommon.area3 || {}),
-      },
-    },
-    handHomes: {
-      ...BASE_INITIAL.handHomes,
-      ...rawHomes,
-      home1: {
-        ...BASE_INITIAL.handHomes.home1,
-        ...(rawHomes.home1 || {}),
-      },
-      home2: {
-        ...BASE_INITIAL.handHomes.home2,
-        ...(rawHomes.home2 || {}),
-      },
-      home3: {
-        ...BASE_INITIAL.handHomes.home3,
-        ...(rawHomes.home3 || {}),
-      },
-    },
-    smPwrCommon: {
-      ...BASE_INITIAL.smPwrCommon,
-      ...(base.smPwrCommon || {}),
-    },
-    loaderCommon: {
-      ...BASE_INITIAL.loaderCommon,
-      ...(base.loaderCommon || {}),
-    },
-    smPwrHomes: {
-      ...BASE_INITIAL.smPwrHomes,
-      ...(base.smPwrHomes || {}),
-    },
-    loaderHomes: {
-      ...BASE_INITIAL.loaderHomes,
-      ...(base.loaderHomes || {}),
-    },
-  };
-}
-
-// Compute hours + mulch for a "Common Area" row
-function computeCommonAreaValues(area, mulchingRates) {
-  const sqftNum = Number(area.sqft) || 0;
-  if (!mulchingRates || sqftNum <= 0) {
-    return { hours: 0, mulch: 0 };
-  }
-
-  const effTable = mulchingRates.handEfficiency || {};
-  const proxTable = mulchingRates.proximity || {};
-  const depthTable = mulchingRates.depthInches || {};
-
-  const eff = effTable[area.efficiency] || effTable.Average || 1;
-  const prox = proxTable[area.proximity] || 1;
-  const depthInches = depthTable[area.depth] || 0;
-
-  // Mulch yards from sq ft + depth
-  const rawYards = depthInches > 0 ? (sqftNum * (depthInches / 12)) / 27 : 0;
-  // CEILING to nearest 0.5 yards
-  const mulch =
-    rawYards > 0 ? Math.ceil(rawYards / 0.5) * 0.5 : 0;
-
-  // Hours: yards / yards-per-man-hour * proximity multiplier
-  const hours = eff > 0 ? (mulch / eff) * prox : 0;
-
-  return { hours, mulch };
-}
-
-// Compute hours + mulch for a "Home" row (sqftEach * count)
-function computeHomeValues(home, mulchingRates) {
-  const sqftEach = Number(home.sqftEach) || 0;
-  const count = Number(home.count) || 0;
-  const totalSqft = sqftEach * count;
-  if (!mulchingRates || totalSqft <= 0) {
-    return { hours: 0, mulch: 0, totalSqft: 0 };
-  }
-
-  const effTable = mulchingRates.handEfficiency || {};
-  const proxTable = mulchingRates.proximity || {};
-  const depthTable = mulchingRates.depthInches || {};
-
-  const eff = effTable[home.efficiency] || effTable.Average || 1;
-  const prox = proxTable[home.proximity] || 1;
-  const depthInches = depthTable[home.depth] || 0;
-
-  const rawYards =
-    depthInches > 0 ? (totalSqft * (depthInches / 12)) / 27 : 0;
-  const mulch =
-    rawYards > 0 ? Math.ceil(rawYards / 0.5) * 0.5 : 0;
-
-  const hours = eff > 0 ? (mulch / eff) * prox : 0;
-
-  return { hours, mulch, totalSqft };
-}
+  mergeMulchingData,
+  computeCommonAreaValues,
+  computeHomeValues,
+} from "./mulchingCalculations";
+import MulchingCommonTable from "./MulchingCommonTable";
+import MulchingHomesTable from "./MulchingHomesTable";
 
 export default function MulchingPage({ tableId }) {
   const { currentServices, updateService, currentRates } =
@@ -511,7 +371,7 @@ export default function MulchingPage({ tableId }) {
   const totalHours = totalAreaHours + totalSmPwrHours + totalLoaderHours;
   const totalMulchYards = totalCommonMulch + totalHomesMulch;
 
-  // -------- RENDER HELPERS --------
+  // -------- RENDER HELPERS / STYLES --------
 
   const tableStyle = {
     width: "100%",
@@ -540,216 +400,7 @@ export default function MulchingPage({ tableId }) {
     boxSizing: "border-box",
   };
 
-  const renderCommonRow = (areaKey, label) => {
-    const area = mergedData.handCommonAreas[areaKey];
-    const computed = computeCommonAreaValues(area, mulchingRates);
-
-    const displayHours =
-      area.hoursOverride != null ? area.hoursOverride : computed.hours;
-    const displayMulch =
-      area.mulchOverride != null ? area.mulchOverride : computed.mulch;
-
-    return (
-      <tr key={areaKey}>
-        <td style={tdStyle}>{label}</td>
-        <td style={tdStyle}>
-          <input
-            type="number"
-            value={area.sqft}
-            onChange={(e) =>
-              handleCommonFieldChange(areaKey, "sqft", e.target.value)
-            }
-            style={inputStyle}
-          />
-        </td>
-        <td style={tdStyle}>
-          <select
-            value={area.efficiency}
-            onChange={(e) =>
-              handleCommonFieldChange(areaKey, "efficiency", e.target.value)
-            }
-            style={inputStyle}
-          >
-            <option value="Slowest">Slowest</option>
-            <option value="Slow">Slow</option>
-            <option value="Average">Average</option>
-            <option value="Fast">Fast</option>
-            <option value="Fastest">Fastest</option>
-          </select>
-        </td>
-        <td style={tdStyle}>
-          <select
-            value={area.depth}
-            onChange={(e) =>
-              handleCommonFieldChange(areaKey, "depth", e.target.value)
-            }
-            style={inputStyle}
-          >
-            <option value="Feather">Feather</option>
-            <option value={'1"'}>1"</option>
-            <option value={'2"'}>2"</option>
-          </select>
-        </td>
-        <td style={tdStyle}>
-          <select
-            value={area.proximity}
-            onChange={(e) =>
-              handleCommonFieldChange(areaKey, "proximity", e.target.value)
-            }
-            style={inputStyle}
-          >
-            <option value="Close">Close</option>
-            <option value="Nearby">Nearby</option>
-            <option value="Moderate">Moderate</option>
-            <option value="Far">Far</option>
-            <option value="Farthest">Farthest</option>
-          </select>
-        </td>
-        <td style={tdStyle}>
-          <input
-            type="number"
-            step="0.01"
-            value={displayHours === 0 ? "" : displayHours.toFixed(2)}
-            onChange={(e) =>
-              handleCommonHoursOverrideChange(areaKey, e.target.value)
-            }
-            placeholder={computed.hours ? computed.hours.toFixed(2) : ""}
-            style={inputStyle}
-          />
-          <div style={{ fontSize: "0.7rem", color: "#666" }}>hrs</div>
-        </td>
-        <td style={tdStyle}>
-          <input
-            type="number"
-            step="0.5"
-            value={displayMulch === 0 ? "" : displayMulch.toFixed(1)}
-            onChange={(e) =>
-              handleCommonMulchOverrideChange(areaKey, e.target.value)
-            }
-            placeholder={
-              computed.mulch ? computed.mulch.toFixed(1) : ""
-            }
-            style={inputStyle}
-          />
-          <div style={{ fontSize: "0.7rem", color: "#666" }}>yards</div>
-        </td>
-      </tr>
-    );
-  };
-
-  const renderHomeRow = (homeKey, label) => {
-    const home = mergedData.handHomes[homeKey];
-    const computed = computeHomeValues(home, mulchingRates);
-
-    const displayHours =
-      home.hoursOverride != null ? home.hoursOverride : computed.hours;
-    const displayMulch =
-      home.mulchOverride != null ? home.mulchOverride : computed.mulch;
-
-    return (
-      <tr key={homeKey}>
-        <td style={tdStyle}>{label}</td>
-        <td style={tdStyle}>
-          <input
-            type="number"
-            value={home.sqftEach}
-            onChange={(e) =>
-              handleHomeFieldChange(homeKey, "sqftEach", e.target.value)
-            }
-            style={inputStyle}
-          />
-          <div style={{ fontSize: "0.7rem", color: "#666" }}>
-            sq ft / home
-          </div>
-        </td>
-        <td style={tdStyle}>
-          <input
-            type="number"
-            value={home.count}
-            onChange={(e) =>
-              handleHomeFieldChange(homeKey, "count", e.target.value)
-            }
-            style={inputStyle}
-          />
-          <div style={{ fontSize: "0.7rem", color: "#666" }}>
-            # homes
-          </div>
-        </td>
-        <td style={tdStyle}>
-          <select
-            value={home.efficiency}
-            onChange={(e) =>
-              handleHomeFieldChange(homeKey, "efficiency", e.target.value)
-            }
-            style={inputStyle}
-          >
-            <option value="Slowest">Slowest</option>
-            <option value="Slow">Slow</option>
-            <option value="Average">Average</option>
-            <option value="Fast">Fast</option>
-            <option value="Fastest">Fastest</option>
-          </select>
-        </td>
-        <td style={tdStyle}>
-          <select
-            value={home.depth}
-            onChange={(e) =>
-              handleHomeFieldChange(homeKey, "depth", e.target.value)
-            }
-            style={inputStyle}
-          >
-            <option value="Feather">Feather</option>
-            <option value={'1"'}>1"</option>
-            <option value={'2"'}>2"</option>
-          </select>
-        </td>
-        <td style={tdStyle}>
-          <select
-            value={home.proximity}
-            onChange={(e) =>
-              handleHomeFieldChange(homeKey, "proximity", e.target.value)
-            }
-            style={inputStyle}
-          >
-            <option value="Close">Close</option>
-            <option value="Nearby">Nearby</option>
-            <option value="Moderate">Moderate</option>
-            <option value="Far">Far</option>
-            <option value="Farthest">Farthest</option>
-          </select>
-        </td>
-        <td style={tdStyle}>
-          <input
-            type="number"
-            step="0.01"
-            value={displayHours === 0 ? "" : displayHours.toFixed(2)}
-            onChange={(e) =>
-              handleHomeHoursOverrideChange(homeKey, e.target.value)
-            }
-            placeholder={computed.hours ? computed.hours.toFixed(2) : ""}
-            style={inputStyle}
-          />
-          <div style={{ fontSize: "0.7rem", color: "#666" }}>hrs</div>
-        </td>
-        <td style={tdStyle}>
-          <input
-            type="number"
-            step="0.5"
-            value={displayMulch === 0 ? "" : displayMulch.toFixed(1)}
-            onChange={(e) =>
-              handleHomeMulchOverrideChange(homeKey, e.target.value)
-            }
-            placeholder={
-              computed.mulch ? computed.mulch.toFixed(1) : ""
-            }
-            style={inputStyle}
-          />
-          <div style={{ fontSize: "0.7rem", color: "#666" }}>yards</div>
-        </td>
-      </tr>
-    );
-  };
-
+  // Kept here exactly as before (still unused, behavior unchanged)
   const renderSmPwrRow = ({
     label,
     selection,
@@ -786,9 +437,6 @@ export default function MulchingPage({ tableId }) {
     </tr>
   );
 
-  // Instead of using renderSmPwrRow generic (it gets a bit messy with override),
-  // we will render explicit SmPwr/Loader rows for clarity.
-
   // -------- RENDER --------
 
   return (
@@ -802,223 +450,49 @@ export default function MulchingPage({ tableId }) {
         maxWidth: "900px",
       }}
     >
-      {/* COMMON AREAS */}
-      <h3 style={{ margin: 0, fontSize: "1rem" }}>Hand – Common Areas</h3>
+      <MulchingCommonTable
+        mergedData={mergedData}
+        mulchingRates={mulchingRates}
+        handleCommonFieldChange={handleCommonFieldChange}
+        handleCommonHoursOverrideChange={handleCommonHoursOverrideChange}
+        handleCommonMulchOverrideChange={handleCommonMulchOverrideChange}
+        smPwrCommonSelection={smPwrCommonSelection}
+        loaderCommonSelection={loaderCommonSelection}
+        smPwrCommonDisplay={smPwrCommonDisplay}
+        loaderCommonDisplay={loaderCommonDisplay}
+        computedSmPwrCommonHours={computedSmPwrCommonHours}
+        computedLoaderCommonHours={computedLoaderCommonHours}
+        handleSmPwrCommonSelectionChange={handleSmPwrCommonSelectionChange}
+        handleSmPwrCommonOverrideChange={handleSmPwrCommonOverrideChange}
+        handleLoaderCommonSelectionChange={handleLoaderCommonSelectionChange}
+        handleLoaderCommonOverrideChange={handleLoaderCommonOverrideChange}
+        tableStyle={tableStyle}
+        thStyle={thStyle}
+        tdStyle={tdStyle}
+        inputStyle={inputStyle}
+      />
 
-      <table style={tableStyle}>
-        <thead>
-          <tr>
-            <th style={thStyle}>Area</th>
-            <th style={thStyle}>Sq Ft</th>
-            <th style={thStyle}>Eff</th>
-            <th style={thStyle}>Depth</th>
-            <th style={thStyle}>Prox</th>
-            <th style={thStyle}>Hours</th>
-            <th style={thStyle}>Mulch</th>
-          </tr>
-        </thead>
-        <tbody>
-          {renderCommonRow("area1", "Area #1")}
-          {renderCommonRow("area2", "Area #2")}
-          {renderCommonRow("area3", "Area #3")}
-          {/* Sm Pwr (Common) */}
-          <tr>
-            <td style={tdStyle}>Sm Pwr (Common)</td>
-            <td style={tdStyle} colSpan={4}>
-              <select
-                value={smPwrCommonSelection}
-                onChange={(e) =>
-                  handleSmPwrCommonSelectionChange(e.target.value)
-                }
-                style={inputStyle}
-              >
-                <option value="Minimum">Minimum</option>
-                <option value="Less">Less</option>
-                <option value="Average">Average</option>
-                <option value="More">More</option>
-                <option value="Copious">Copious</option>
-              </select>
-            </td>
-            <td style={tdStyle}>
-              <input
-                type="number"
-                step="0.01"
-                value={
-                  smPwrCommonDisplay === 0
-                    ? ""
-                    : smPwrCommonDisplay.toFixed(2)
-                }
-                onChange={(e) =>
-                  handleSmPwrCommonOverrideChange(e.target.value)
-                }
-                placeholder={
-                  computedSmPwrCommonHours
-                    ? computedSmPwrCommonHours.toFixed(2)
-                    : ""
-                }
-                style={inputStyle}
-              />
-              <div style={{ fontSize: "0.7rem", color: "#666" }}>hrs</div>
-            </td>
-            <td style={tdStyle}></td>
-          </tr>
-          {/* Loader (Common) */}
-          <tr>
-            <td style={tdStyle}>Loader (Common)</td>
-            <td style={tdStyle} colSpan={4}>
-              <select
-                value={loaderCommonSelection}
-                onChange={(e) =>
-                  handleLoaderCommonSelectionChange(e.target.value)
-                }
-                style={inputStyle}
-              >
-                <option value="Minimum">Minimum</option>
-                <option value="Less">Less</option>
-                <option value="Average">Average</option>
-                <option value="More">More</option>
-                <option value="Copious">Copious</option>
-              </select>
-            </td>
-            <td style={tdStyle}>
-              <input
-                type="number"
-                step="0.01"
-                value={
-                  loaderCommonDisplay === 0
-                    ? ""
-                    : loaderCommonDisplay.toFixed(2)
-                }
-                onChange={(e) =>
-                  handleLoaderCommonOverrideChange(e.target.value)
-                }
-                placeholder={
-                  computedLoaderCommonHours
-                    ? computedLoaderCommonHours.toFixed(2)
-                    : ""
-                }
-                style={inputStyle}
-              />
-              <div style={{ fontSize: "0.7rem", color: "#666" }}>hrs</div>
-            </td>
-            <td style={tdStyle}></td>
-          </tr>
-        </tbody>
-      </table>
-
-      {/* HOMES */}
-      <h3
-        style={{
-          margin: "0.75rem 0 0 0",
-          fontSize: "1rem",
-        }}
-      >
-        Hand – Homes
-      </h3>
-
-      <table style={tableStyle}>
-        <thead>
-          <tr>
-            <th style={thStyle}>Home</th>
-            <th style={thStyle}>Sq Ft / Home</th>
-            <th style={thStyle}># Homes</th>
-            <th style={thStyle}>Eff</th>
-            <th style={thStyle}>Depth</th>
-            <th style={thStyle}>Prox</th>
-            <th style={thStyle}>Hours</th>
-            <th style={thStyle}>Mulch</th>
-          </tr>
-        </thead>
-        <tbody>
-          {renderHomeRow("home1", "Home Size #1")}
-          {renderHomeRow("home2", "Home Size #2")}
-          {renderHomeRow("home3", "Home Size #3")}
-
-          {/* Sm Pwr (Homes) */}
-          <tr>
-            <td style={tdStyle}>Sm Pwr (Homes)</td>
-            <td style={tdStyle} colSpan={5}>
-              <select
-                value={smPwrHomesSelection}
-                onChange={(e) =>
-                  handleSmPwrHomesSelectionChange(e.target.value)
-                }
-                style={inputStyle}
-              >
-                <option value="Minimum">Minimum</option>
-                <option value="Less">Less</option>
-                <option value="Average">Average</option>
-                <option value="More">More</option>
-                <option value="Copious">Copious</option>
-              </select>
-            </td>
-            <td style={tdStyle}>
-              <input
-                type="number"
-                step="0.01"
-                value={
-                  smPwrHomesDisplay === 0
-                    ? ""
-                    : smPwrHomesDisplay.toFixed(2)
-                }
-                onChange={(e) =>
-                  handleSmPwrHomesOverrideChange(e.target.value)
-                }
-                placeholder={
-                  computedSmPwrHomesHours
-                    ? computedSmPwrHomesHours.toFixed(2)
-                    : ""
-                }
-                style={inputStyle}
-              />
-              <div style={{ fontSize: "0.7rem", color: "#666" }}>hrs</div>
-            </td>
-            <td style={tdStyle}></td>
-          </tr>
-
-          {/* Loader (Homes) */}
-          <tr>
-            <td style={tdStyle}>Loader (Homes)</td>
-            <td style={tdStyle} colSpan={5}>
-              <select
-                value={loaderHomesSelection}
-                onChange={(e) =>
-                  handleLoaderHomesSelectionChange(e.target.value)
-                }
-                style={inputStyle}
-              >
-                <option value="Minimum">Minimum</option>
-                <option value="Less">Less</option>
-                <option value="Average">Average</option>
-                <option value="More">More</option>
-                <option value="Copious">Copious</option>
-              </select>
-            </td>
-            <td style={tdStyle}>
-              <input
-                type="number"
-                step="0.01"
-                value={
-                  loaderHomesDisplay === 0
-                    ? ""
-                    : loaderHomesDisplay.toFixed(2)
-                }
-                onChange={(e) =>
-                  handleLoaderHomesOverrideChange(e.target.value)
-                }
-                placeholder={
-                  computedLoaderHomesHours
-                    ? computedLoaderHomesHours.toFixed(2)
-                    : ""
-                }
-                style={inputStyle}
-              />
-              <div style={{ fontSize: "0.7rem", color: "#666" }}>hrs</div>
-            </td>
-            <td style={tdStyle}></td>
-          </tr>
-        </tbody>
-      </table>
+      <MulchingHomesTable
+        mergedData={mergedData}
+        mulchingRates={mulchingRates}
+        handleHomeFieldChange={handleHomeFieldChange}
+        handleHomeHoursOverrideChange={handleHomeHoursOverrideChange}
+        handleHomeMulchOverrideChange={handleHomeMulchOverrideChange}
+        smPwrHomesSelection={smPwrHomesSelection}
+        loaderHomesSelection={loaderHomesSelection}
+        smPwrHomesDisplay={smPwrHomesDisplay}
+        loaderHomesDisplay={loaderHomesDisplay}
+        computedSmPwrHomesHours={computedSmPwrHomesHours}
+        computedLoaderHomesHours={computedLoaderHomesHours}
+        handleSmPwrHomesSelectionChange={handleSmPwrHomesSelectionChange}
+        handleSmPwrHomesOverrideChange={handleSmPwrHomesOverrideChange}
+        handleLoaderHomesSelectionChange={handleLoaderHomesSelectionChange}
+        handleLoaderHomesOverrideChange={handleLoaderHomesOverrideChange}
+        tableStyle={tableStyle}
+        thStyle={thStyle}
+        tdStyle={tdStyle}
+        inputStyle={inputStyle}
+      />
 
       {/* LIVE PREVIEW */}
       <div
@@ -1041,7 +515,13 @@ export default function MulchingPage({ tableId }) {
             Total Labor Hours:{" "}
             <strong>{totalHours.toFixed(2)}</strong>
           </div>
-          <div style={{ fontSize: "0.75rem", color: "#666", marginTop: "0.25rem" }}>
+          <div
+            style={{
+              fontSize: "0.75rem",
+              color: "#666",
+              marginTop: "0.25rem",
+            }}
+          >
             Areas: {totalAreaHours.toFixed(2)} hrs · Sm Pwr:{" "}
             {totalSmPwrHours.toFixed(2)} hrs · Loader:{" "}
             {totalLoaderHours.toFixed(2)} hrs
