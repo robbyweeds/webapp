@@ -97,10 +97,12 @@ export function ServiceProvider({ children }) {
   // ----------------------------------------
   // RATE STORAGE
   // ----------------------------------------
-  const [currentRates, setCurrentRates] = useState({
-    mowingFactors: DEFAULT_MOWING_FACTORS,
-    mowingDollars: DEFAULT_MOWING_DOLLARS,
-  });
+const [currentRates, setCurrentRates] = useState({
+  mowingFactors: DEFAULT_MOWING_FACTORS,
+  mowingDollars: DEFAULT_MOWING_DOLLARS,
+  mulchingRates: null,
+});
+
 
   // ----------------------------------------
   // SERVICE UPDATE

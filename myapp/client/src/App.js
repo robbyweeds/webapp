@@ -10,7 +10,9 @@ import MowingForm from "./components/MowingForm";
 import MulchingForm from "./components/MulchingForm";
 import PruningForm from "./components/PruningForm";
 import LeavesForm from "./components/LeavesForm";
+
 import MowingRatesPage from "./components/Mowing/MowingRatesPage";
+import MulchingRatesPage from "./components/Mulching/MulchingRatesPage";
 
 function App() {
   return (
@@ -23,6 +25,7 @@ function App() {
         <Route path="/services/pruning" element={<PruningForm />} />
         <Route path="/services/leaves" element={<LeavesForm />} />
         <Route path="/mowing-rates" element={<MowingRatesPage />} />
+        <Route path="/mulching-rates" element={<MulchingRatesPage />} />
       </Routes>
     </Router>
   );

@@ -1,69 +1,65 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useServiceContext } from "../context/ServiceContext";
 
+import MulchingPage from "./Mulching/MulchingPage";
+
 export default function MulchingForm() {
-  const { services, updateService } = useServiceContext();
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    mulchType: "",
-    depth: "",
-  });
+  const { getAllServices, updateService } = useServiceContext();
+
+  const [tables, setTables] = useState([]);
 
   useEffect(() => {
-    if (services.mulching) setFormData(services.mulching);
-  }, [services.mulching]);
+    const services = getAllServices();
+    const mulching = Array.isArray(services.mulching)
+      ? services.mulching
+      : [];
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+    // if no tables yet, create one
+    if (mulching.length === 0) {
+      const first = [{ id: "Mulch1", data: {} }];
+      setTables(first);
+      updateService("mulching", first);
+    } else {
+      setTables(mulching);
+    }
+  }, [getAllServices, updateService]);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    updateService("mulching", formData);
-    navigate("/services");
+  const addTable = () => {
+    const newId = `Mulch${tables.length + 1}`;
+    const updated = [...tables, { id: newId, data: {} }];
+
+    updateService("mulching", updated);
+    setTables(updated);
   };
 
   return (
-    <div style={{ padding: "2rem", maxWidth: "400px", margin: "auto" }}>
+    <div style={{ padding: "2rem" }}>
       <h2>Mulching</h2>
-      <form onSubmit={handleSubmit}>
-        <label>Mulch Type</label>
-        <input
-          name="mulchType"
-          value={formData.mulchType}
-          onChange={handleChange}
-          placeholder="e.g., Wood Chips"
-          style={{ width: "100%", padding: "0.5rem", marginTop: "0.5rem" }}
-          required
-        />
-        <label style={{ marginTop: "1rem" }}>Depth (inches)</label>
-        <input
-          type="number"
-          name="depth"
-          value={formData.depth}
-          onChange={handleChange}
-          placeholder="e.g., 3"
-          style={{ width: "100%", padding: "0.5rem", marginTop: "0.5rem" }}
-          required
-        />
+
+      {tables.map((t) => (
+        <MulchingPage key={t.id} tableId={t.id} />
+      ))}
+
+      <div style={{ marginTop: "1rem" }}>
+        <button onClick={addTable}>Add Mulching Table</button>
+
         <button
-          type="submit"
-          style={{
-            marginTop: "1.5rem",
-            padding: "10px 20px",
-            backgroundColor: "#007bff",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
+          onClick={() => navigate("/mulching-rates")}
+          style={{ marginLeft: "1rem" }}
         >
-          Save
+          Edit Mulching Rates
         </button>
-      </form>
+      </div>
+
+      <button
+        onClick={() => navigate(-1)}
+        style={{ marginTop: "2rem" }}
+      >
+        Back
+      </button>
     </div>
   );
 }
