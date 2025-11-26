@@ -1,12 +1,11 @@
-// src/components/Mulching/mulchingDefaults.js
+// myapp/client/src/components/Mulching/mulchingDefaults.js
 
+// --------------------------------------
+// INITIAL TABLE STATE
+// --------------------------------------
 export const INITIAL_MULCHING_DATA = {
-  name: "",
-  summary: {
-    numOccurrences: 1,
-  },
+  summary: {},
 
-  // Hand – Common Areas
   handCommonAreas: {
     area1: {
       sqft: "",
@@ -34,7 +33,6 @@ export const INITIAL_MULCHING_DATA = {
     },
   },
 
-  // Hand – Homes
   handHomes: {
     home1: {
       sqftEach: "",
@@ -65,19 +63,33 @@ export const INITIAL_MULCHING_DATA = {
     },
   },
 
-  // Sm Pwr + Loader
-  smPwr: {
+  smPwrCommon: {
     selection: "Average",
     hoursOverride: null,
   },
 
-  loader: {
+  loaderCommon: {
+    selection: "Average",
+    hoursOverride: null,
+  },
+
+  smPwrHomes: {
+    selection: "Average",
+    hoursOverride: null,
+  },
+
+  loaderHomes: {
     selection: "Average",
     hoursOverride: null,
   },
 };
 
+// --------------------------------------
+// DEFAULT RATES — PERFECT MATCH TO EXCEL
+// --------------------------------------
 export const DEFAULT_MULCHING_RATES = {
+
+  // Hand application efficiency (yards per man-hour)
   handEfficiency: {
     Slowest: 0.9,
     Slow: 1.1,
@@ -86,27 +98,7 @@ export const DEFAULT_MULCHING_RATES = {
     Fastest: 1.8,
   },
 
-  treeRingYards: {
-    Small3: 3,
-    Avg4: 4,
-    Large5: 5,
-    Extra6: 6,
-  },
-
-  treeEfficiency: {
-    Slowest: 0.95,
-    Slow: 1.05,
-    Average: 1.2,
-    Fast: 1.35,
-    Fastest: 1.45,
-  },
-
-  depthInches: {
-    Feather: 0.5,
-    '1"': 1,
-    '2"': 2,
-  },
-
+  // Proximity multipliers
   proximity: {
     Close: 1.0,
     Nearby: 1.1,
@@ -115,6 +107,14 @@ export const DEFAULT_MULCHING_RATES = {
     Farthest: 1.4,
   },
 
+  // Depth of mulch in inches
+  depthInches: {
+    Feather: 0.5,
+    '1"': 1,
+    '2"': 2,
+  },
+
+  // Sm Pwr production (man-hours per yard)
   smPowerManHours: {
     Minimum: 16,
     Less: 14,
@@ -123,6 +123,7 @@ export const DEFAULT_MULCHING_RATES = {
     Copious: 8,
   },
 
+  // Loader production (man-hours per yard)
   loaderManHours: {
     Minimum: 20,
     Less: 18,
@@ -130,4 +131,10 @@ export const DEFAULT_MULCHING_RATES = {
     More: 14,
     Copious: 12,
   },
+
+  // Pricing defaults
+  mulchPricePerYard: 28,
+  handLaborRatePerHour: 50,
+  smPwrRatePerHour: 55,
+  loaderRatePerHour: 85,
 };

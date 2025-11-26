@@ -7,6 +7,7 @@ import {
   mergeMulchingData,
   computeCommonAreaValues,
   computeHomeValues,
+  formatCurrency,
 } from "./mulchingCalculations";
 import MulchingCommonTable from "./MulchingCommonTable";
 import MulchingHomesTable from "./MulchingHomesTable";
@@ -56,7 +57,6 @@ export default function MulchingPage({ tableId }) {
           mulchOverride: null,
         },
       },
-      // Changing base inputs resets SmPwr/Loader overrides
       smPwrCommon: {
         ...mergedData.smPwrCommon,
         hoursOverride: null,
@@ -361,6 +361,37 @@ export default function MulchingPage({ tableId }) {
     updateMulchingData(newData);
   };
 
+  // -------- PRICING CALCULATIONS --------
+
+  const handRate = mulchingRates.handLaborRatePerHour ?? 50;
+  const smPwrRate = mulchingRates.smPwrRatePerHour ?? 55;
+  const loaderRate = mulchingRates.loaderRatePerHour ?? 85;
+  const mulchPrice = mulchingRates.mulchPricePerYard ?? 28;
+
+  const commonHandHours = totalCommonHours;
+  const commonSmPwrHours = smPwrCommonDisplay || 0;
+  const commonLoaderHours = loaderCommonDisplay || 0;
+  const commonMulchYards = totalCommonMulch;
+
+  const homesHandHours = totalHomesHours;
+  const homesSmPwrHours = smPwrHomesDisplay || 0;
+  const homesLoaderHours = loaderHomesDisplay || 0;
+  const homesMulchYards = totalHomesMulch;
+
+  const commonPrice =
+    commonHandHours * handRate +
+    commonSmPwrHours * smPwrRate +
+    commonLoaderHours * loaderRate +
+    commonMulchYards * mulchPrice;
+
+  const homesPrice =
+    homesHandHours * handRate +
+    homesSmPwrHours * smPwrRate +
+    homesLoaderHours * loaderRate +
+    homesMulchYards * mulchPrice;
+
+  const totalPrice = commonPrice + homesPrice;
+
   // -------- LIVE PREVIEW TOTALS --------
 
   const totalSmPwrHours = (smPwrCommonDisplay || 0) + (smPwrHomesDisplay || 0);
@@ -371,7 +402,7 @@ export default function MulchingPage({ tableId }) {
   const totalHours = totalAreaHours + totalSmPwrHours + totalLoaderHours;
   const totalMulchYards = totalCommonMulch + totalHomesMulch;
 
-  // -------- RENDER HELPERS / STYLES --------
+  // -------- STYLES --------
 
   const tableStyle = {
     width: "100%",
@@ -399,43 +430,6 @@ export default function MulchingPage({ tableId }) {
     fontSize: "0.8rem",
     boxSizing: "border-box",
   };
-
-  // Kept here exactly as before (still unused, behavior unchanged)
-  const renderSmPwrRow = ({
-    label,
-    selection,
-    onSelectionChange,
-    displayHours,
-    computedHours,
-  }) => (
-    <tr>
-      <td style={tdStyle}>{label}</td>
-      <td style={tdStyle} colSpan={4}>
-        <select
-          value={selection}
-          onChange={(e) => onSelectionChange(e.target.value)}
-          style={inputStyle}
-        >
-          <option value="Minimum">Minimum</option>
-          <option value="Less">Less</option>
-          <option value="Average">Average</option>
-          <option value="More">More</option>
-          <option value="Copious">Copious</option>
-        </select>
-      </td>
-      <td style={tdStyle}>
-        <input
-          type="number"
-          step="0.01"
-          value={displayHours === 0 ? "" : displayHours.toFixed(2)}
-          onChange={(e) => computedHours.overrideHandler(e.target.value)}
-          placeholder={computedHours.base ? computedHours.base.toFixed(2) : ""}
-          style={inputStyle}
-        />
-        <div style={{ fontSize: "0.7rem", color: "#666" }}>hrs</div>
-      </td>
-    </tr>
-  );
 
   // -------- RENDER --------
 
@@ -470,6 +464,8 @@ export default function MulchingPage({ tableId }) {
         thStyle={thStyle}
         tdStyle={tdStyle}
         inputStyle={inputStyle}
+        tablePrice={commonPrice}
+        formatCurrency={formatCurrency}
       />
 
       <MulchingHomesTable
@@ -492,6 +488,8 @@ export default function MulchingPage({ tableId }) {
         thStyle={thStyle}
         tdStyle={tdStyle}
         inputStyle={inputStyle}
+        tablePrice={homesPrice}
+        formatCurrency={formatCurrency}
       />
 
       {/* LIVE PREVIEW */}
@@ -514,6 +512,10 @@ export default function MulchingPage({ tableId }) {
           <div>
             Total Labor Hours:{" "}
             <strong>{totalHours.toFixed(2)}</strong>
+          </div>
+          <div>
+            Total Price:{" "}
+            <strong>{formatCurrency(totalPrice)}</strong>
           </div>
           <div
             style={{

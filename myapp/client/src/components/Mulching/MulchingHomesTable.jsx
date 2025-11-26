@@ -23,6 +23,8 @@ export default function MulchingHomesTable({
   thStyle,
   tdStyle,
   inputStyle,
+  tablePrice,
+  formatCurrency,
 }) {
   const renderHomeRow = (homeKey, label) => {
     const home = mergedData.handHomes[homeKey];
@@ -135,7 +137,6 @@ export default function MulchingHomesTable({
 
   return (
     <>
-      {/* HOMES */}
       <h3
         style={{
           margin: "0.75rem 0 0 0",
@@ -186,7 +187,9 @@ export default function MulchingHomesTable({
                 type="number"
                 step="0.01"
                 value={
-                  smPwrHomesDisplay === 0 ? "" : smPwrHomesDisplay.toFixed(2)
+                  smPwrHomesDisplay === 0
+                    ? ""
+                    : smPwrHomesDisplay.toFixed(2)
                 }
                 onChange={(e) =>
                   handleSmPwrHomesOverrideChange(e.target.value)
@@ -243,6 +246,13 @@ export default function MulchingHomesTable({
               <div style={{ fontSize: "0.7rem", color: "#666" }}>hrs</div>
             </td>
             <td style={tdStyle}></td>
+          </tr>
+
+          {/* PRICE ROW */}
+          <tr>
+            <td style={tdStyle} colSpan={8} align="right">
+              <strong>Price: {formatCurrency(tablePrice)}</strong>
+            </td>
           </tr>
         </tbody>
       </table>

@@ -23,6 +23,8 @@ export default function MulchingCommonTable({
   thStyle,
   tdStyle,
   inputStyle,
+  tablePrice,
+  formatCurrency,
 }) {
   const renderCommonRow = (areaKey, label) => {
     const area = mergedData.handCommonAreas[areaKey];
@@ -121,7 +123,6 @@ export default function MulchingCommonTable({
 
   return (
     <>
-      {/* COMMON AREAS */}
       <h3 style={{ margin: 0, fontSize: "1rem" }}>Hand – Common Areas</h3>
 
       <table style={tableStyle}>
@@ -140,6 +141,7 @@ export default function MulchingCommonTable({
           {renderCommonRow("area1", "Area #1")}
           {renderCommonRow("area2", "Area #2")}
           {renderCommonRow("area3", "Area #3")}
+
           {/* Sm Pwr (Common) */}
           <tr>
             <td style={tdStyle}>Sm Pwr (Common)</td>
@@ -181,6 +183,7 @@ export default function MulchingCommonTable({
             </td>
             <td style={tdStyle}></td>
           </tr>
+
           {/* Loader (Common) */}
           <tr>
             <td style={tdStyle}>Loader (Common)</td>
@@ -221,6 +224,13 @@ export default function MulchingCommonTable({
               <div style={{ fontSize: "0.7rem", color: "#666" }}>hrs</div>
             </td>
             <td style={tdStyle}></td>
+          </tr>
+
+          {/* PRICE ROW */}
+          <tr>
+            <td style={tdStyle} colSpan={7} align="right">
+              <strong>Price: {formatCurrency(tablePrice)}</strong>
+            </td>
           </tr>
         </tbody>
       </table>
