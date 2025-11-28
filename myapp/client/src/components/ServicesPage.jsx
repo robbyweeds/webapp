@@ -8,40 +8,52 @@ import { computeHours, computeTotals } from "./Mowing/mowingCalculations";
 
 export default function ServicesPage() {
   const navigate = useNavigate();
-
   const { currentServices, updateService, getAllServices, currentRates } =
     useServiceContext();
 
   const API_URL = process.env.REACT_APP_API_URL;
 
+  // ---------------------------------------
+  // PROJECT INFO
+  // ---------------------------------------
   const [project, setProject] = useState({
     projectName: "",
     date: "",
     acres: "",
   });
 
-  // Load project info
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem("project"));
     if (stored) setProject(stored);
   }, []);
 
-  // -------------------------
-  // DELETE ENTRIES
-  // -------------------------
-  const deleteMowing = (id) => {
-    const updated = (currentServices.mowing || []).filter((m) => m.id !== id);
-    updateService("mowing", updated);
-  };
+  // ---------------------------------------
+  // DELETE HANDLERS
+  // ---------------------------------------
+  const deleteMowing = (id) =>
+    updateService(
+      "mowing",
+      (currentServices.mowing || []).filter((m) => m.id !== id)
+    );
 
-  const deleteMulching = (id) => {
-    const updated = (currentServices.mulching || []).filter((m) => m.id !== id);
-    updateService("mulching", updated);
-  };
+  const deleteMulching = (id) =>
+    updateService(
+      "mulching",
+      (currentServices.mulching || []).filter((m) => m.id !== id)
+    );
 
-  // -------------------------
-  // MOWING PREVIEW CALC
-  // -------------------------
+  const deletePruning = (id) =>
+    updateService(
+      "pruning",
+      (currentServices.pruning || []).filter((p) => p.id !== id)
+    );
+
+  const deleteEdging = () => updateService("edging", null);
+  const deleteBedMaintenance = () => updateService("bedMaintenance", null);
+
+  // ---------------------------------------
+  // COMPUTE MOWING PREVIEW
+  // ---------------------------------------
   const acresPerHour = currentRates?.mowingFactors?.acresPerHour || {};
   const mowingDollars = currentRates?.mowingDollars || {};
 
@@ -69,37 +81,37 @@ export default function ServicesPage() {
 
     const qty = computeHours(merged, acresPerHour);
     const totals = computeTotals(merged, qty, mowingDollars);
-
     return { merged, totals };
   };
 
-  // -------------------------
-  // EDGING PREVIEW (same logic as your old version)
-  // -------------------------
+  // ---------------------------------------
+  // EDGING PREVIEW
+  // ---------------------------------------
   const computeEdgingTotals = (entry) => {
-    const d = entry.data || {};
+    if (!entry || !entry.data) return null;
 
+    const d = entry.data;
     const qty = d.qtyUnit || { EDGER: 0, BLOWER: 0 };
     const price = d.unitPrice || { EDGER: 0, BLOWER: 0 };
     const occ = d.summary?.numOccurrences || 0;
 
-    const totalRow = {
-      EDGER: qty.EDGER * price.EDGER,
-      BLOWER: qty.BLOWER * price.BLOWER,
+    const totalOccDollar =
+      qty.EDGER * price.EDGER + qty.BLOWER * price.BLOWER;
+
+    return {
+      occ,
+      pricePerOcc: totalOccDollar,
+      finalTotal: totalOccDollar * occ,
     };
-
-    const totalOccDollar = totalRow.EDGER + totalRow.BLOWER;
-    const finalTotal = totalOccDollar * occ;
-
-    return { qty, price, occ, totalOccDollar, finalTotal };
   };
 
-  // -------------------------
-  // BED MAINT PREVIEW (same logic as your old version)
-  // -------------------------
+  // ---------------------------------------
+  // BED MAINT PREVIEW (SAFE)
+  // ---------------------------------------
   const computeBedTotals = (entry) => {
-    const d = entry.data || {};
+    if (!entry || !entry.data) return null;
 
+    const d = entry.data;
     const qty = d.qtyUnit || { HAND: 0, BACKPACK: 0, ROUNDUP: 0 };
     const price = d.unitPrice || { HAND: 0, BACKPACK: 0, ROUNDUP: 0 };
     const occ = d.summary?.numOccurrences || 0;
@@ -109,20 +121,73 @@ export default function ServicesPage() {
       qty.BACKPACK * price.BACKPACK +
       qty.ROUNDUP * price.ROUNDUP;
 
-    const finalTotal = occDollar * occ;
-
-    return { qty, price, occ, occDollar, finalTotal };
+    return {
+      occ,
+      pricePerOcc: occDollar,
+      finalTotal: occDollar * occ,
+    };
   };
 
-  // -------------------------
+  // ---------------------------------------
+  // PRUNING PREVIEW (SAFE + FIXED OCC)
+  // ---------------------------------------
+  const computePruningTotals = (entry) => {
+    if (!entry || !entry.data) return null;
+
+    const d = entry.data;
+    const qty = d.qty || {
+      MISC: 0,
+      HAND: 0,
+      SHEARS: 0,
+      CLEANUP: 0,
+      CHAINSAW: 0,
+    };
+
+    const price = d.unitPrice || {
+      MISC: 0,
+      HAND: 0,
+      SHEARS: 0,
+      CLEANUP: 0,
+      CHAINSAW: 0,
+    };
+
+    // FIX → correct field for occurrences
+    const occ =
+      Number(d.occurrences) ||
+      Number(d.summary?.numOccurrences) ||
+      0;
+
+    const hoursPerOcc =
+      qty.MISC +
+      qty.HAND +
+      qty.SHEARS +
+      qty.CLEANUP +
+      qty.CHAINSAW;
+
+    const dollarPerOcc =
+      qty.MISC * price.MISC +
+      qty.HAND * price.HAND +
+      qty.SHEARS * price.SHEARS +
+      qty.CLEANUP * price.CLEANUP +
+      qty.CHAINSAW * price.CHAINSAW;
+
+    return {
+      occ,
+      hoursPerOcc,
+      pricePerOcc: dollarPerOcc,
+      totalDollar: dollarPerOcc * occ,
+    };
+  };
+
+  // ---------------------------------------
   // SAVE PROJECT
-  // -------------------------
+  // ---------------------------------------
   const handleSaveProject = async () => {
     const services = getAllServices() || {};
-
     const sanitized = {};
-    Object.entries(services).forEach(([key, value]) => {
-      sanitized[key] = value || {};
+
+    Object.entries(services).forEach(([k, v]) => {
+      sanitized[k] = v || {};
     });
 
     if (!project.projectName || !project.date || !project.acres) {
@@ -137,249 +202,173 @@ export default function ServicesPage() {
         body: JSON.stringify({ project, services: sanitized }),
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        alert("Project saved!");
+      const json = await response.json();
+      if (json.success) {
+        alert("Project Saved!");
         navigate("/");
       } else {
-        alert("Error: " + data.error);
+        alert(json.error);
       }
     } catch (err) {
-      console.error(err);
+      console.log(err);
       alert("Network Error");
     }
   };
 
+  // ---------------------------------------
+  // SHOW TABLE?
+  // ---------------------------------------
   const hasAnyService =
     (currentServices.mowing?.length || 0) > 0 ||
     (currentServices.mulching?.length || 0) > 0 ||
-    (currentServices.edging?.length || 0) > 0 ||
-    (currentServices.bedMaintenance?.length || 0) > 0;
+    (currentServices.pruning?.length || 0) > 0 ||
+    currentServices.edging ||
+    currentServices.bedMaintenance;
 
+  // ---------------------------------------
+  // RENDER
+  // ---------------------------------------
   return (
     <div style={{ padding: "2rem", maxWidth: "900px", margin: "auto" }}>
       <h2>Services for {project.projectName || "New Project"}</h2>
 
-      {/* ADD SERVICES */}
-      <section style={{ marginBottom: "1.5rem" }}>
+      {/* SERVICE ADD BUTTONS */}
+      <section>
         <h3>Add Services</h3>
-
         <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-          <button onClick={() => navigate("/services/mowing")}>
-            Add Mowing
-          </button>
-          <button onClick={() => navigate("/services/mulching")}>
-            Add Mulching
-          </button>
-          <button onClick={() => navigate("/services/pruning")}>
-            Add Pruning
-          </button>
-          <button onClick={() => navigate("/services/leaves")}>
-            Add Leaves
-          </button>
+          <button onClick={() => navigate("/services/mowing")}>Add Mowing</button>
+          <button onClick={() => navigate("/services/mulching")}>Add Mulching</button>
+          <button onClick={() => navigate("/services/pruning")}>Add Pruning</button>
+          <button onClick={() => navigate("/services/leaves")}>Add Leaves</button>
         </div>
       </section>
 
-      <button onClick={handleSaveProject} style={{ marginBottom: "1.5rem" }}>
+      <button onClick={handleSaveProject} style={{ margin: "1rem 0" }}>
         Save Project
       </button>
 
-      {/* PROJECT INFO */}
-      <div style={{ marginTop: "1rem", padding: "1rem", borderTop: "1px solid #ccc" }}>
-        <h3>Current Project Summary</h3>
+      {/* PROJECT SUMMARY */}
+      <div style={{ borderTop: "1px solid #ccc", paddingTop: "1rem" }}>
+        <h3>Project Summary</h3>
+        <p><strong>Project:</strong> {project.projectName}</p>
+        <p><strong>Date:</strong> {project.date}</p>
+        <p><strong>Acres:</strong> {project.acres}</p>
 
-        <p>
-          <strong>Project Name:</strong> {project.projectName}
-        </p>
-        <p>
-          <strong>Date:</strong> {project.date}
-        </p>
-        <p>
-          <strong>Acres:</strong> {project.acres}
-        </p>
-
-        {/* UNIFIED TABLE */}
+        {/* SERVICES SUMMARY */}
         {hasAnyService && (
-          <div style={{ marginTop: "1.5rem" }}>
+          <div>
             <h3>Service Summary</h3>
 
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                background: "#fafafa",
-              }}
-            >
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  <th
-                    style={{
-                      borderBottom: "1px solid #ccc",
-                      textAlign: "left",
-                      padding: "4px",
-                    }}
-                  >
-                    Service
-                  </th>
-                  <th
-                    style={{
-                      borderBottom: "1px solid #ccc",
-                      padding: "4px",
-                    }}
-                  >
-                    Occurrences
-                  </th>
-                  <th
-                    style={{
-                      borderBottom: "1px solid #ccc",
-                      padding: "4px",
-                    }}
-                  >
-                    Price / Occ
-                  </th>
-                  <th
-                    style={{
-                      borderBottom: "1px solid #ccc",
-                      padding: "4px",
-                    }}
-                  >
-                    Total
-                  </th>
-                  <th
-                    style={{
-                      borderBottom: "1px solid #ccc",
-                      padding: "4px",
-                    }}
-                  ></th>
+                  <th style={th}>Service</th>
+                  <th style={th}>Occurrences</th>
+                  <th style={th}>Price / Occ</th>
+                  <th style={th}>Total</th>
+                  <th style={th}></th>
                 </tr>
               </thead>
+
               <tbody>
-                {/* MOWING ROWS */}
+
+                {/* ---------------- MOWING ---------------- */}
                 {currentServices.mowing?.map((t) => {
                   const { merged, totals } = computeMowingPreview(t);
                   const occ = merged.summary?.numOccurrences || 0;
-                  const pricePerOcc =
-                    totals && typeof totals.adjDollar === "number"
-                      ? totals.adjDollar
-                      : 0;
-                  const totalDollar =
-                    totals && typeof totals.final === "number"
-                      ? totals.final
-                      : 0;
 
                   return (
                     <tr key={t.id}>
-                      <td style={{ padding: "4px" }}>
-                        {merged.name || "Mowing Area"}
-                      </td>
-                      <td style={{ textAlign: "center", padding: "4px" }}>
-                        {occ}
-                      </td>
-                      <td style={{ textAlign: "center", padding: "4px" }}>
-                        ${pricePerOcc.toFixed(2)}
-                      </td>
-                      <td style={{ textAlign: "center", padding: "4px" }}>
-                        ${totalDollar.toFixed(2)}
-                      </td>
-                      <td style={{ textAlign: "center", padding: "4px" }}>
-                        <button
-                          onClick={() => deleteMowing(t.id)}
-                          style={{
-                            background: "#dc3545",
-                            color: "white",
-                            border: "none",
-                            padding: "4px 8px",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          X
-                        </button>
+                      <td style={td}>{merged.name || "Mowing Area"}</td>
+                      <td style={tdCenter}>{occ}</td>
+                      <td style={tdCenter}>${totals.adjDollar.toFixed(2)}</td>
+                      <td style={tdCenter}>${totals.final.toFixed(2)}</td>
+                      <td style={tdCenter}>
+                        <button onClick={() => deleteMowing(t.id)} style={deleteBtn}>X</button>
                       </td>
                     </tr>
                   );
                 })}
 
-                {/* MULCHING ROWS (PLACEHOLDER $0.00) */}
+                {/* ---------------- MULCHING ---------------- */}
                 {currentServices.mulching?.map((m) => {
-                  const data = m.data || {};
-                  const occ = data.summary?.numOccurrences || 0;
-
+                  const d = m.data || {};
+                  const occ = d.summary?.numOccurrences || 0;
                   return (
                     <tr key={m.id}>
-                      <td style={{ padding: "4px" }}>
-                        {data.name || "Mulching Area"}
-                      </td>
-                      <td style={{ textAlign: "center", padding: "4px" }}>
-                        {occ}
-                      </td>
-                      <td style={{ textAlign: "center", padding: "4px" }}>
-                        $0.00
-                      </td>
-                      <td style={{ textAlign: "center", padding: "4px" }}>
-                        $0.00
-                      </td>
-                      <td style={{ textAlign: "center", padding: "4px" }}>
-                        <button
-                          onClick={() => deleteMulching(m.id)}
-                          style={{
-                            background: "#dc3545",
-                            color: "white",
-                            border: "none",
-                            padding: "4px 8px",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                          }}
-                        >
-                          X
-                        </button>
+                      <td style={td}>{d.name || "Mulching Area"}</td>
+                      <td style={tdCenter}>{occ}</td>
+                      <td style={tdCenter}>$0.00</td>
+                      <td style={tdCenter}>$0.00</td>
+                      <td style={tdCenter}>
+                        <button onClick={() => deleteMulching(m.id)} style={deleteBtn}>X</button>
                       </td>
                     </tr>
                   );
                 })}
 
-                {/* EDGING (single row, if exists) */}
-                {currentServices.edging?.[0] && (() => {
-                  const e = currentServices.edging[0];
-                  const calc = computeEdgingTotals(e);
+                {/* ---------------- PRUNING ---------------- */}
+                {currentServices.pruning?.map((p) => {
+                  const calc = computePruningTotals(p);
+                  if (!calc) return null;
+
+                  return (
+                    <tr key={p.id}>
+                      <td style={td}>{p.data?.name || "Pruning Area"}</td>
+                      <td style={tdCenter}>{calc.occ}</td>
+                      <td style={tdCenter}>${calc.pricePerOcc.toFixed(2)}</td>
+                      <td style={tdCenter}>${calc.totalDollar.toFixed(2)}</td>
+                      <td style={tdCenter}>
+                        <button onClick={() => deletePruning(p.id)} style={deleteBtn}>X</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+
+                {/* ---------------- EDGING ---------------- */}
+                {currentServices.edging && (() => {
+                  const entry = Array.isArray(currentServices.edging)
+                    ? currentServices.edging[0]
+                    : currentServices.edging;
+
+                  const calc = computeEdgingTotals(entry);
+                  if (!calc) return null;
+
                   return (
                     <tr>
-                      <td style={{ padding: "4px" }}>Edging</td>
-                      <td style={{ textAlign: "center", padding: "4px" }}>
-                        {calc.occ}
+                      <td style={td}>Edging</td>
+                      <td style={tdCenter}>{calc.occ}</td>
+                      <td style={tdCenter}>${calc.pricePerOcc.toFixed(2)}</td>
+                      <td style={tdCenter}>${calc.finalTotal.toFixed(2)}</td>
+                      <td style={tdCenter}>
+                        <button onClick={deleteEdging} style={deleteBtn}>X</button>
                       </td>
-                      <td style={{ textAlign: "center", padding: "4px" }}>
-                        ${calc.totalOccDollar.toFixed(2)}
-                      </td>
-                      <td style={{ textAlign: "center", padding: "4px" }}>
-                        ${calc.finalTotal.toFixed(2)}
-                      </td>
-                      <td></td>
                     </tr>
                   );
                 })()}
 
-                {/* BED MAINTENANCE (single row, if exists) */}
-                {currentServices.bedMaintenance?.[0] && (() => {
-                  const b = currentServices.bedMaintenance[0];
-                  const calc = computeBedTotals(b);
+                {/* ---------------- BED MAINT ---------------- */}
+                {currentServices.bedMaintenance && (() => {
+                  const entry = Array.isArray(currentServices.bedMaintenance)
+                    ? currentServices.bedMaintenance[0]
+                    : currentServices.bedMaintenance;
+
+                  const calc = computeBedTotals(entry);
+                  if (!calc) return null;
+
                   return (
                     <tr>
-                      <td style={{ padding: "4px" }}>Bed Maintenance</td>
-                      <td style={{ textAlign: "center", padding: "4px" }}>
-                        {calc.occ}
+                      <td style={td}>Bed Maintenance</td>
+                      <td style={tdCenter}>{calc.occ}</td>
+                      <td style={tdCenter}>${calc.pricePerOcc.toFixed(2)}</td>
+                      <td style={tdCenter}>${calc.finalTotal.toFixed(2)}</td>
+                      <td style={tdCenter}>
+                        <button onClick={deleteBedMaintenance} style={deleteBtn}>X</button>
                       </td>
-                      <td style={{ textAlign: "center", padding: "4px" }}>
-                        ${calc.occDollar.toFixed(2)}
-                      </td>
-                      <td style={{ textAlign: "center", padding: "4px" }}>
-                        ${calc.finalTotal.toFixed(2)}
-                      </td>
-                      <td></td>
                     </tr>
                   );
                 })()}
+
               </tbody>
             </table>
           </div>
@@ -388,3 +377,22 @@ export default function ServicesPage() {
     </div>
   );
 }
+
+const th = {
+  borderBottom: "1px solid #ccc",
+  textAlign: "center",
+  padding: "4px",
+};
+
+const td = { padding: "4px" };
+
+const tdCenter = { padding: "4px", textAlign: "center" };
+
+const deleteBtn = {
+  background: "#dc3545",
+  color: "white",
+  border: "none",
+  padding: "4px 8px",
+  borderRadius: "4px",
+  cursor: "pointer",
+};

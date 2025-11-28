@@ -86,23 +86,23 @@ export function ServiceProvider({ children }) {
   // GLOBAL SERVICES STORAGE
   // ----------------------------------------
   const [currentServices, setCurrentServices] = useState({
-    mowing: [],             // multiple mowing tables
-    edging: null,           // single table
-    bedMaintenance: null,   // single table
+    mowing: [],             
+    edging: null,           
+    bedMaintenance: null,   
     mulching: null,
-    pruning: null,
+    pruning: [],     // ✅ FIXED (must be an array)
     leaves: null,
   });
 
   // ----------------------------------------
   // RATE STORAGE
   // ----------------------------------------
-const [currentRates, setCurrentRates] = useState({
-  mowingFactors: DEFAULT_MOWING_FACTORS,
-  mowingDollars: DEFAULT_MOWING_DOLLARS,
-  mulchingRates: null,
-});
-
+  const [currentRates, setCurrentRates] = useState({
+    mowingFactors: DEFAULT_MOWING_FACTORS,
+    mowingDollars: DEFAULT_MOWING_DOLLARS,
+    mulchingRates: null,
+    pruningRates: null,   // ✅ ADDED (supports PruningRatesPage)
+  });
 
   // ----------------------------------------
   // SERVICE UPDATE
@@ -135,7 +135,7 @@ const [currentRates, setCurrentRates] = useState({
       edging: null,
       bedMaintenance: null,
       mulching: null,
-      pruning: null,
+      pruning: [],   // ✅ FIXED (was null — must stay an array)
       leaves: null,
     });
   };

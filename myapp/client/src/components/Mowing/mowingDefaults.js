@@ -125,7 +125,7 @@ export const INITIAL_MOWING_DATA = {
   // -----------------------------
   summary: {
     adjPercent: 0,
-    numOccurrences: 1,
+    numOccurrences: 0,
   },
 
   totals: {},

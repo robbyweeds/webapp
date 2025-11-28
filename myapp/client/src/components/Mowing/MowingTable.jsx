@@ -1,5 +1,5 @@
 // =====================================
-// MowingTable.jsx — FINAL FIXED VERSION
+// MowingTable.jsx — FINAL FIXED VERSION (OCC CELL YELLOW ONLY)
 // =====================================
 
 import React, { useMemo } from "react";
@@ -191,6 +191,7 @@ export default function MowingTable({ tableId }) {
             <th rowSpan={2}>5111</th>
             <th rowSpan={2}># OCC</th>
 
+            {/* OCC CELL → YELLOW ONLY */}
             <th rowSpan={2} style={{ backgroundColor: "yellow" }}>
               <LabeledInput
                 value={data.summary.numOccurrences}
@@ -213,9 +214,7 @@ export default function MowingTable({ tableId }) {
         </thead>
 
         <tbody>
-          {/* --------------------------------------------- */}
           {/* EFFICIENCY ROW */}
-          {/* --------------------------------------------- */}
           <tr style={{ background: "#e9f7ef", fontWeight: "bold" }}>
             <td>EFFICIENCY</td>
             <td style={{ background: "#ccc" }}></td>
@@ -236,7 +235,6 @@ export default function MowingTable({ tableId }) {
               </td>
             ))}
 
-            {/* TRIMMER + BLOWER */}
             {SMPWR_KEYS.map((key) => (
               <td key={key}>
                 <select
@@ -260,9 +258,7 @@ export default function MowingTable({ tableId }) {
             <td style={{ background: "#eef" }}>{totals.totalHours.toFixed(2)}</td>
           </tr>
 
-          {/* --------------------------------------------- */}
           {/* ACRES ROW */}
-          {/* --------------------------------------------- */}
           <tr>
             <td>ACRES</td>
             <td style={{ background: "#ccc" }}></td>
@@ -279,7 +275,6 @@ export default function MowingTable({ tableId }) {
               </td>
             ))}
 
-            {/* TRIMMER/BLOWER/ROTARY/5111 do not take ACRES */}
             <td style={{ background: "#ccc" }}></td>
             <td style={{ background: "#ccc" }}></td>
             <td style={{ background: "#ccc" }}></td>
@@ -289,13 +284,10 @@ export default function MowingTable({ tableId }) {
             <td style={{ background: "#eef" }}>{totals.totalAcres.toFixed(2)}</td>
           </tr>
 
-          {/* --------------------------------------------- */}
-          {/* QTY/UNIT (HOURS) */}
-          {/* --------------------------------------------- */}
+          {/* QTY / UNIT */}
           <tr>
             <td>QTY/UNIT</td>
 
-            {/* MISC HOURS */}
             <td style={{ background: "#b3d9ff" }}>
               <LabeledInput
                 value={data.qtyUnit.MISC_HRS.toFixed(2)}
@@ -305,7 +297,6 @@ export default function MowingTable({ tableId }) {
               />
             </td>
 
-            {/* DECK HOURS */}
             {DECK_KEYS.map((key) => (
               <td key={key} style={{ background: "#b3d9ff" }}>
                 <LabeledInput
@@ -317,7 +308,6 @@ export default function MowingTable({ tableId }) {
               </td>
             ))}
 
-            {/* TRIMMER */}
             <td style={{ background: "#b3d9ff" }}>
               <LabeledInput
                 value={(data.manualOverrides.TRIMMER ?? qtyUnitComputed.TRIMMER).toFixed(2)}
@@ -327,7 +317,6 @@ export default function MowingTable({ tableId }) {
               />
             </td>
 
-            {/* BLOWER */}
             <td style={{ background: "#b3d9ff" }}>
               <LabeledInput
                 value={(data.manualOverrides.BLOWER ?? qtyUnitComputed.BLOWER).toFixed(2)}
@@ -337,7 +326,6 @@ export default function MowingTable({ tableId }) {
               />
             </td>
 
-            {/* ROTARY */}
             <td style={{ background: "#b3d9ff" }}>
               <LabeledInput
                 value={data.qtyUnit.ROTARY.toFixed(2)}
@@ -347,7 +335,6 @@ export default function MowingTable({ tableId }) {
               />
             </td>
 
-            {/* 5111 */}
             <td style={{ background: "#b3d9ff" }}>
               <LabeledInput
                 value={data.qtyUnit["5111"].toFixed(2)}
@@ -361,9 +348,7 @@ export default function MowingTable({ tableId }) {
             <td style={{ background: "#eef" }}>{totals.totalOcc.toFixed(2)}</td>
           </tr>
 
-          {/* --------------------------------------------- */}
           {/* UNIT DOLLARS */}
-          {/* --------------------------------------------- */}
           <tr>
             <td>UNIT $</td>
 
@@ -391,9 +376,7 @@ export default function MowingTable({ tableId }) {
             <td style={{ background: "#eef" }}>${totals.adjDollar.toFixed(2)}</td>
           </tr>
 
-          {/* --------------------------------------------- */}
-          {/* TOTAL ROW */}
-          {/* --------------------------------------------- */}
+          {/* TOTAL ROW (NO YELLOW NOW) */}
           <tr style={{ background: "#f2f2f2", fontWeight: "bold" }}>
             <td>TOTAL</td>
 
@@ -409,7 +392,9 @@ export default function MowingTable({ tableId }) {
             <td>${totals.rowTotals["5111"].toFixed(2)}</td>
 
             <td>TOTAL $</td>
-            <td style={{ background: "yellow" }}>${totals.final.toFixed(2)}</td>
+
+            {/* 🟢 NO MORE YELLOW */}
+            <td>${totals.final.toFixed(2)}</td>
           </tr>
         </tbody>
       </table>

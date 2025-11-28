@@ -7,7 +7,7 @@ import { useServiceContext } from "../context/ServiceContext";
 const INITIAL = {
   qtyUnit: { HAND: 0, BACKPACK: 0, ROUNDUP: 0 },
   unitPrice: { HAND: 55, BACKPACK: 55, ROUNDUP: 50 },
-  summary: { numOccurrences: 1 },
+  summary: { numOccurrences: 0 },
 
   // Required by ServicesPage preview:
   totalOccDollar: 0,
@@ -170,7 +170,7 @@ export default function BedMaintenanceTable() {
           <td>${totalRow.ROUNDUP.toFixed(2)}</td>
 
           <td>TOTAL $</td>
-          <td style={{ background: "yellow" }}>
+          <td style={{ background: "#f4f4f4" }}>
             {finalTotal.toFixed(2)}
           </td>
         </tr>

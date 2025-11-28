@@ -7,7 +7,7 @@ import { useServiceContext } from "../context/ServiceContext";
 const INITIAL = {
   qtyUnit: { EDGER: 0, BLOWER: 0 },
   unitPrice: { EDGER: 55, BLOWER: 55 },
-  summary: { numOccurrences: 1 },
+  summary: { numOccurrences: 0 },
 
   // Required by ServicesPage preview:
   totalOccDollar: 0,
@@ -156,7 +156,7 @@ export default function EdgingTable() {
           <td>${totalRow.BLOWER.toFixed(2)}</td>
 
           <td>TOTAL $</td>
-          <td style={{ background: "yellow" }}>
+          <td style={{ background: "#f4f4f4" }}>
             {finalTotal.toFixed(2)}
           </td>
         </tr>
